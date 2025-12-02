@@ -6,8 +6,6 @@
 
 A Laravel package for seamless integration with Xendit payment gateway. Built from scratch using Laravel's HTTP client, this package provides a fluent API for creating payments, managing transactions, and handling webhooks - all with database persistence and event-driven architecture.
 
-**100% Coverage of Xendit's Current API** (https://docs.xendit.co/apidocs)
-
 ## Features
 
 - 🔥 Fluent API for creating payments
@@ -26,14 +24,14 @@ A Laravel package for seamless integration with Xendit payment gateway. Built fr
 
 ## API Coverage
 
-✅ **Payment Request** - Create, get, cancel, simulate
-✅ **Payment** - Get status, cancel, capture
-✅ **Payment Token** - Create, get, deactivate
-✅ **Session** - Create, get, cancel
-✅ **Refund** - Create refunds
-✅ **Payment Link** - Create and manage payment links
-✅ **Transaction** - Get and list transactions
-✅ **Webhooks** - All webhook events supported
+- ✅ **Payment Request** - Create, get, cancel, simulate
+- ✅ **Payment** - Get status, cancel, capture
+- ✅ **Payment Token** - Create, get, deactivate
+- ✅ **Session** - Create, get, cancel
+- ✅ **Refund** - Create refunds
+- ✅ **Payment Link** - Create and manage payment links
+- ✅ **Transaction** - Get and list transactions
+- ✅ **Webhooks** - All webhook events supported
 
 ## Requirements
 
@@ -286,6 +284,7 @@ if ($payment->isPaid()) {
 ### Webhook Handling
 
 Webhooks are automatically handled at `/xendit/webhook`. The package will:
+
 1. Verify webhook signature
 2. Log webhook to database
 3. Update payment status
@@ -338,6 +337,7 @@ protected $listen = [
 #### Example Listeners
 
 **Payment Event Listener:**
+
 ```php
 namespace App\Listeners;
 
@@ -360,6 +360,7 @@ class ProcessOrder
 ```
 
 **Refund Event Listener:**
+
 ```php
 namespace App\Listeners;
 
@@ -379,6 +380,7 @@ class ProcessRefund
 ```
 
 **Payment Token Event Listener:**
+
 ```php
 namespace App\Listeners;
 
