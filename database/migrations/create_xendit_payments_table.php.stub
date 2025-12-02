@@ -1,0 +1,58 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up()
+    {
+        Schema::create('xendit_payments', function (Blueprint $table) {
+            $table->id();
+            $table->string('external_id')->unique()->index();
+            $table->string('xendit_id')->nullable()->unique();
+
+            // Polymorphic relationship - attach payment to any model
+            $table->nullableMorphs('payable');
+
+            $table->string('payment_type'); // invoice, ewallet, va, qr, payment_request, etc
+            $table->string('payment_channel')->nullable(); // dana, ovo, shopeepay, bca, mandiri, etc
+            $table->tinyInteger('status')->nullable(); // Will be set by model observer
+
+            $table->decimal('amount', 15, 2);
+            $table->string('currency', 3)->nullable(); // Will be set by model observer
+            $table->text('description')->nullable();
+
+            // Payer information (optional)
+            $table->string('payer_email')->nullable();
+            $table->string('payer_name')->nullable();
+            $table->string('payer_phone')->nullable();
+
+            // URLs
+            $table->string('payment_url')->nullable(); // redirect URL for customer
+            $table->string('callback_url')->nullable();
+            $table->string('success_redirect_url')->nullable();
+            $table->string('failure_redirect_url')->nullable();
+
+            // Flexible data storage
+            $table->json('metadata')->nullable(); // custom data from your app
+            $table->json('payment_details')->nullable(); // store full Xendit API response
+
+            // Timestamps
+            $table->timestamp('paid_at')->nullable();
+            $table->timestamp('expired_at')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+
+            // Indexes for common queries
+            $table->index(['status', 'created_at']);
+            $table->index('payment_type');
+        });
+    }
+
+    public function down()
+    {
+        Schema::dropIfExists('xendit_payments');
+    }
+};

@@ -3,6 +3,13 @@
 namespace Laraditz\Xendit;
 
 use Illuminate\Support\ServiceProvider;
+use Laraditz\Xendit\Client\XenditClient;
+use Laraditz\Xendit\Models\XenditPayment;
+use Laraditz\Xendit\Models\XenditTransaction;
+use Laraditz\Xendit\Models\XenditWebhookLog;
+use Laraditz\Xendit\Observers\XenditPaymentObserver;
+use Laraditz\Xendit\Observers\XenditTransactionObserver;
+use Laraditz\Xendit\Observers\XenditWebhookLogObserver;
 
 class XenditServiceProvider extends ServiceProvider
 {
@@ -11,36 +18,26 @@ class XenditServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        /*
-         * Optional methods to load your package assets
-         */
-        // $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'xendit');
-        // $this->loadViewsFrom(__DIR__.'/../resources/views', 'xendit');
-        // $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        // $this->loadRoutesFrom(__DIR__.'/routes.php');
+        // Load routes
+        $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+
+        // Register observers
+        XenditPayment::observe(XenditPaymentObserver::class);
+        XenditTransaction::observe(XenditTransactionObserver::class);
+        XenditWebhookLog::observe(XenditWebhookLogObserver::class);
 
         if ($this->app->runningInConsole()) {
+            // Publish configuration
             $this->publishes([
                 __DIR__.'/../config/config.php' => config_path('xendit.php'),
-            ], 'config');
+            ], 'xendit-config');
 
-            // Publishing the views.
-            /*$this->publishes([
-                __DIR__.'/../resources/views' => resource_path('views/vendor/xendit'),
-            ], 'views');*/
-
-            // Publishing assets.
-            /*$this->publishes([
-                __DIR__.'/../resources/assets' => public_path('vendor/xendit'),
-            ], 'assets');*/
-
-            // Publishing the translation files.
-            /*$this->publishes([
-                __DIR__.'/../resources/lang' => resource_path('lang/vendor/xendit'),
-            ], 'lang');*/
-
-            // Registering package commands.
-            // $this->commands([]);
+            // Publish migrations
+            $this->publishes([
+                __DIR__.'/../database/migrations/create_xendit_payments_table.php.stub' => database_path('migrations/'.date('Y_m_d_His', time()).'_create_xendit_payments_table.php'),
+                __DIR__.'/../database/migrations/create_xendit_transactions_table.php.stub' => database_path('migrations/'.date('Y_m_d_His', time() + 1).'_create_xendit_transactions_table.php'),
+                __DIR__.'/../database/migrations/create_xendit_webhook_logs_table.php.stub' => database_path('migrations/'.date('Y_m_d_His', time() + 2).'_create_xendit_webhook_logs_table.php'),
+            ], 'xendit-migrations');
         }
     }
 
@@ -52,9 +49,14 @@ class XenditServiceProvider extends ServiceProvider
         // Automatically apply the package configuration
         $this->mergeConfigFrom(__DIR__.'/../config/config.php', 'xendit');
 
+        // Register XenditClient as singleton
+        $this->app->singleton(XenditClient::class, function () {
+            return new XenditClient();
+        });
+
         // Register the main class to use with the facade
-        $this->app->singleton('xendit', function () {
-            return new Xendit;
+        $this->app->singleton('xendit', function ($app) {
+            return new Xendit($app->make(XenditClient::class));
         });
     }
 }
