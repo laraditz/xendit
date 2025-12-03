@@ -165,9 +165,11 @@ class PaymentRequestBuilder extends BaseBuilder
      */
     public function channelCode(string $channelCode): static
     {
-        $this->paymentMethods = [[
-            'channel_code' => $channelCode,
-        ]];
+        $this->paymentMethods = [
+            [
+                'channel_code' => $channelCode,
+            ]
+        ];
         return $this;
     }
 
@@ -226,12 +228,12 @@ class PaymentRequestBuilder extends BaseBuilder
         $payload = $this->buildApiPayload($externalId);
 
         // Debug: Log the payload
-        \Log::info('Xendit Payment Request Payload:', $payload);
+        // \Log::info('Xendit Payment Request Payload:', $payload);
 
         $response = $this->service->create($payload);
 
         // Debug: Log the response
-        \Log::info('Xendit Payment Request Response:', $response);
+        // \Log::info('Xendit Payment Request Response:', $response);
 
         // Extract payment URL from actions (find REDIRECT_CUSTOMER action)
         $paymentUrl = null;
@@ -284,9 +286,11 @@ class PaymentRequestBuilder extends BaseBuilder
 
         // Handle channel_code - set as payment method
         if (isset($data['channel_code'])) {
-            $this->paymentMethods = [[
-                'channel_code' => $data['channel_code'],
-            ]];
+            $this->paymentMethods = [
+                [
+                    'channel_code' => $data['channel_code'],
+                ]
+            ];
 
             // Merge channel_properties if provided
             if (isset($data['channel_properties'])) {
