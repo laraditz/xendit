@@ -24,14 +24,14 @@ A Laravel package for seamless integration with Xendit payment gateway. Built fr
 
 ## API Coverage
 
-- ✅ **Payment Request** - Create, get, cancel, simulate
-- ✅ **Payment** - Get status, cancel, capture
-- ✅ **Payment Token** - Create, get, deactivate
-- ✅ **Session** - Create, get, cancel
-- ✅ **Refund** - Create refunds
-- ✅ **Payment Link** - Create and manage payment links
-- ✅ **Transaction** - Get and list transactions
-- ✅ **Webhooks** - All webhook events supported
+- ✅ **[Payment Request](docs/payment-request.md)** - Create, get, cancel, simulate
+- ✅ **[Payment](docs/payment.md)** - Get status, cancel, capture
+- ✅ **[Payment Token](docs/payment-token.md)** - Create, get, deactivate
+- ✅ **[Session](docs/session.md)** - Create, get, cancel
+- ✅ **[Refund](docs/refund.md)** - Create refunds
+- ✅ **[Payment Link](docs/payment-link.md)** - Create and manage payment links
+- ✅ **[Transaction](docs/transaction.md)** - Get and list transactions
+- ✅ **[Webhooks](docs/webhooks.md)** - All webhook events supported
 
 ## Requirements
 
@@ -398,13 +398,26 @@ class LogPaymentTokenCreation
 }
 ```
 
-### Testing
+## Documentation
+
+For detailed documentation on each service, please refer to:
+
+- **[Payment Request](docs/payment-request.md)** - Complete guide to creating payment requests with fluent builder
+- **[Payment](docs/payment.md)** - Managing payment status, cancellation, and capture
+- **[Payment Token](docs/payment-token.md)** - Saving and managing customer payment methods
+- **[Session](docs/session.md)** - Creating secure payment sessions for checkout flows
+- **[Refund](docs/refund.md)** - Processing full and partial refunds
+- **[Payment Link](docs/payment-link.md)** - Generating shareable payment links for invoices
+- **[Transaction](docs/transaction.md)** - Querying and listing all transactions
+- **[Webhooks](docs/webhooks.md)** - Handling webhook events and notifications
+
+## Testing
 
 ```bash
 composer test
 ```
 
-### Changelog
+## Changelog
 
 Please see [CHANGELOG](CHANGELOG.md) for more information what has changed recently.
 
