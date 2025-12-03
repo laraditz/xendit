@@ -13,6 +13,7 @@ trait MakesHttpRequests
             [
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
+                'api-version' => config('xendit.api_version', '2024-11-11'),
             ]
         ))
         ->baseUrl($this->getBaseUrl())

@@ -223,12 +223,31 @@ class PaymentRequestBuilder extends BaseBuilder
         ));
 
         // Call Xendit API to create payment request
-        $response = $this->service->create($this->buildApiPayload($externalId));
+        $payload = $this->buildApiPayload($externalId);
 
-        // Update payment with Xendit response
+        // Debug: Log the payload
+        \Log::info('Xendit Payment Request Payload:', $payload);
+
+        $response = $this->service->create($payload);
+
+        // Debug: Log the response
+        \Log::info('Xendit Payment Request Response:', $response);
+
+        // Extract payment URL from actions (find REDIRECT_CUSTOMER action)
+        $paymentUrl = null;
+        if (isset($response['actions']) && is_array($response['actions'])) {
+            $redirectAction = collect($response['actions'])->firstWhere('type', 'REDIRECT_CUSTOMER');
+            $paymentUrl = $redirectAction['value'] ?? null;
+        }
+
+        // Update payment with Xendit response (v3 API structure)
         $payment->update([
-            'xendit_id' => $response['id'],
-            'payment_url' => $response['actions'][0]['url'] ?? null,
+            'xendit_id' => $response['payment_request_id'] ?? $response['id'] ?? null,
+            'payment_channel' => $response['channel_code'] ?? null,
+            'payment_url' => $paymentUrl,
+            'success_redirect_url' => $response['channel_properties']['success_return_url'] ?? null,
+            'failure_redirect_url' => $response['channel_properties']['failure_return_url'] ?? null,
+            'expired_at' => isset($response['expires_at']) ? \Carbon\Carbon::parse($response['expires_at']) : null,
             'payment_details' => $response,
         ]);
 
@@ -252,6 +271,8 @@ class PaymentRequestBuilder extends BaseBuilder
             'failure_redirect_url' => 'failure_redirect_url',
             'items' => 'items',
             'channel_properties' => 'channel_properties',
+            'country' => 'country',
+            'capture_method' => 'capture_method',
         ];
 
         // Use collection to map and merge attributes (data takes precedence)
@@ -261,17 +282,16 @@ class PaymentRequestBuilder extends BaseBuilder
             }
         });
 
-        // Handle payment methods separately
-        if (isset($data['payment_method'])) {
-            $paymentMethod = $data['payment_method'];
+        // Handle channel_code - set as payment method
+        if (isset($data['channel_code'])) {
+            $this->paymentMethods = [[
+                'channel_code' => $data['channel_code'],
+            ]];
 
-            // Extract payment methods array from different structures
-            $this->paymentMethods = match (true) {
-                isset($paymentMethod['payment_methods']) => $paymentMethod['payment_methods'],
-                is_array($paymentMethod) && isset($paymentMethod[0]) => $paymentMethod,
-                isset($paymentMethod['type']) => [$paymentMethod],
-                default => $this->paymentMethods,
-            };
+            // Merge channel_properties if provided
+            if (isset($data['channel_properties'])) {
+                $this->paymentMethods[0]['channel_properties'] = $data['channel_properties'];
+            }
         }
     }
 
