@@ -1,14 +1,14 @@
 # Payment Request
 
-The Payment Request API is Xendit's unified payment method that allows you to accept payments from multiple payment channels in a single integration.
+The Payment Request API is Xendit's unified payment method that allows you to accept payments from multiple payment channels.
 
 **Official Documentation:** https://docs.xendit.co/apidocs/create-payment-request
 
 ## Available Methods
 
-### `create(array $data): array`
+### `create(array $data = []): XenditPayment`
 
-Creates a new payment request.
+Creates a new payment request. Supports both fluent API and array parameter.
 
 **Official API:** `POST /payment_requests`
 
@@ -19,38 +19,51 @@ Creates a new payment request.
 | `reference_id` | string | Yes | Your unique reference ID |
 | `amount` | number | Yes | Payment amount |
 | `currency` | string | Yes | Currency code (IDR, PHP, THB, VND, MYR) |
-| `customer` | object | No | Customer information |
-| `payment_method` | object | No | Payment method configuration |
+| `channel_code` | string | Yes | Payment channel code (SHOPEEPAY, BCA, QRIS, etc.) |
+| `channel_properties` | object | No | Channel-specific properties |
 | `description` | string | No | Payment description |
-| `success_redirect_url` | string | No | Success redirect URL |
-| `failure_redirect_url` | string | No | Failure redirect URL |
 | `metadata` | object | No | Custom metadata |
+| `country` | string | No | Country code (auto-detected from currency) |
+| `capture_method` | string | No | AUTOMATIC or MANUAL (default: AUTOMATIC) |
 
-**Example:**
+**Example (Array):**
 
 ```php
 use Laraditz\Xendit\Facades\Xendit;
 
-$response = Xendit::paymentRequest()->create([
+$payment = Xendit::paymentRequest()->create([
     'reference_id' => 'ORDER-123',
     'amount' => 100000,
     'currency' => 'MYR',
-    'customer' => [
-        'email' => 'customer@example.com',
-        'mobile_number' => '+60123456789',
-        'given_names' => 'John',
+    'channel_code' => 'SHOPEEPAY',
+    'channel_properties' => [
+        'success_return_url' => 'https://yourapp.com/success',
+        'failure_return_url' => 'https://yourapp.com/failed',
     ],
-    'payment_method' => [
-        'type' => 'PAYMENT_METHOD_LIST',
-        'payment_methods' => [
-            ['type' => 'EWALLET', 'reusability' => ['type' => 'ONE_TIME_USE']],
-            ['type' => 'VIRTUAL_ACCOUNT', 'reusability' => ['type' => 'ONE_TIME_USE']],
-        ],
-        'reusability' => 'ONE_TIME_USE',
+    'description' => 'Payment for Order #123',
+    'metadata' => [
+        'order_id' => 123,
     ],
-    'success_redirect_url' => 'https://yourapp.com/success',
-    'failure_redirect_url' => 'https://yourapp.com/failed',
 ]);
+
+// Redirect to payment page
+return redirect($payment->payment_url);
+```
+
+**Example (Fluent API):**
+
+```php
+use Laraditz\Xendit\Facades\Xendit;
+
+$payment = Xendit::paymentRequest()
+    ->amount(100000)
+    ->currency('MYR')
+    ->description('Payment for Order #123')
+    ->ewallets('SHOPEEPAY')
+    ->successUrl('https://yourapp.com/success')
+    ->failureUrl('https://yourapp.com/failed')
+    ->metadata(['order_id' => 123])
+    ->create();
 ```
 
 ### `get(string $id): array`
@@ -124,10 +137,9 @@ use Laraditz\Xendit\Facades\Xendit;
 
 $payment = Xendit::paymentRequest()
     ->amount(100000)
+    ->currency('MYR')
     ->description('Payment for Order #123')
-    ->email('customer@example.com')
-    ->phone('+60123456789')
-    ->allMethods()
+    ->ewallets('SHOPEEPAY')
     ->successUrl('https://yourapp.com/success')
     ->failureUrl('https://yourapp.com/failed')
     ->create();
@@ -159,49 +171,15 @@ Set payment description.
 ->description('Payment for Order #123')
 ```
 
-#### `email(string $email)`
-Set customer email.
-
-```php
-->email('customer@example.com')
-```
-
-#### `phone(string $phone)`
-Set customer phone number.
-
-```php
-->phone('+60123456789')
-```
-
-#### `givenNames(string $givenNames)`
-Set customer given names.
-
-```php
-->givenNames('John Doe')
-```
-
-#### `customer(array $customer)`
-Set complete customer information.
-
-```php
-->customer([
-    'email' => 'customer@example.com',
-    'mobile_number' => '+60123456789',
-    'given_names' => 'John',
-    'surname' => 'Doe',
-    'type' => 'INDIVIDUAL',
-])
-```
-
 #### `successUrl(string $url)`
-Set success redirect URL.
+Set success redirect URL (added to channel_properties).
 
 ```php
 ->successUrl('https://yourapp.com/success')
 ```
 
 #### `failureUrl(string $url)`
-Set failure redirect URL.
+Set failure redirect URL (added to channel_properties).
 
 ```php
 ->failureUrl('https://yourapp.com/failed')
@@ -223,39 +201,30 @@ Attach payment to a model (polymorphic relationship).
 
 ### Payment Method Helpers
 
-#### `allMethods()`
-Enable all available payment methods.
+#### `ewallets(string $channelCode = 'SHOPEEPAY')`
+Set e-wallet payment channel.
 
 ```php
-->allMethods()
+->ewallets('SHOPEEPAY')  // ShopeePay
+->ewallets('GRABPAY')    // GrabPay
+->ewallets('DANA')       // DANA
 ```
 
-#### `ewallets()`
-Enable e-wallet payments (DANA, OVO, ShopeePay, etc.).
+#### `virtualAccounts(string $channelCode = 'BCA')`
+Set virtual account payment channel.
 
 ```php
-->ewallets()
+->virtualAccounts('BCA')      // BCA Virtual Account
+->virtualAccounts('BNI')      // BNI Virtual Account
+->virtualAccounts('MANDIRI')  // Mandiri Virtual Account
 ```
 
-#### `virtualAccounts()`
-Enable virtual account payments (BCA, BNI, BRI, etc.).
+#### `qrCode(string $channelCode = 'QRIS')`
+Set QR code payment channel.
 
 ```php
-->virtualAccounts()
-```
-
-#### `qrCode()`
-Enable QR code payments (QRIS).
-
-```php
-->qrCode()
-```
-
-#### `overTheCounter()`
-Enable over-the-counter payments (Alfamart, Indomaret).
-
-```php
-->overTheCounter()
+->qrCode('QRIS')        // QRIS
+->qrCode('QRPROMPTPAY') // PromptPay (Thailand)
 ```
 
 #### `card()`
@@ -265,28 +234,26 @@ Enable card payments.
 ->card()
 ```
 
-#### `directDebit()`
-Enable direct debit payments.
+#### `overTheCounter(string $channelCode = 'ALFAMART')`
+Set over-the-counter payment channel.
 
 ```php
-->directDebit()
+->overTheCounter('ALFAMART')   // Alfamart
+->overTheCounter('INDOMARET')  // Indomaret
 ```
 
-#### `paymentMethod(string $type, array $reusability = null)`
-Add a custom payment method.
+#### `directDebit(string $channelCode = 'BCA_KLIKPAY')`
+Set direct debit payment channel.
 
 ```php
-->paymentMethod('EWALLET', ['type' => 'ONE_TIME_USE'])
+->directDebit('BCA_KLIKPAY')
 ```
 
-#### `paymentMethods(array $methods)`
-Set multiple payment methods at once.
+#### `channelCode(string $channelCode)`
+Set specific channel code directly.
 
 ```php
-->paymentMethods([
-    ['type' => 'EWALLET', 'reusability' => ['type' => 'ONE_TIME_USE']],
-    ['type' => 'VIRTUAL_ACCOUNT', 'reusability' => ['type' => 'ONE_TIME_USE']],
-])
+->channelCode('SHOPEEPAY')
 ```
 
 #### `channelProperties(string $channelCode, array $properties)`
@@ -295,51 +262,38 @@ Set channel-specific properties.
 ```php
 ->channelProperties('SHOPEEPAY', [
     'success_return_url' => 'https://yourapp.com/success',
-])
-```
-
-#### `items(array $items)`
-Set line items.
-
-```php
-->items([
-    [
-        'name' => 'Product 1',
-        'quantity' => 2,
-        'price' => 50000,
-    ],
-    [
-        'name' => 'Product 2',
-        'quantity' => 1,
-        'price' => 100000,
-    ],
+    'failure_return_url' => 'https://yourapp.com/failed',
 ])
 ```
 
 ## Complete Examples
 
-### Example 1: Simple Payment with All Methods
+### Example 1: Simple ShopeePay Payment
 
 ```php
 $payment = Xendit::paymentRequest()
     ->amount(100000)
-    ->email('customer@example.com')
-    ->allMethods()
+    ->currency('MYR')
+    ->ewallets('SHOPEEPAY')
+    ->successUrl('https://yourapp.com/success')
+    ->failureUrl('https://yourapp.com/failed')
     ->create();
 
 return redirect($payment->payment_url);
 ```
 
-### Example 2: E-Wallets Only
+### Example 2: Virtual Account Payment (BCA)
 
 ```php
 $payment = Xendit::paymentRequest()
     ->amount(50000)
-    ->email('customer@example.com')
-    ->phone('+60123456789')
-    ->ewallets()
-    ->successUrl('https://yourapp.com/success')
+    ->currency('IDR')
+    ->virtualAccounts('BCA')
+    ->description('Payment for Invoice #INV-001')
     ->create();
+
+// Display VA number to user
+echo "Please transfer to VA: " . $payment->payment_details['virtual_account_number'];
 ```
 
 ### Example 3: Attach to Order Model
@@ -349,64 +303,64 @@ $order = Order::find(123);
 
 $payment = Xendit::paymentRequest()
     ->amount($order->total)
+    ->currency('MYR')
     ->description("Payment for Order #{$order->id}")
-    ->email($order->customer_email)
     ->for($order)
     ->metadata(['order_id' => $order->id])
-    ->allMethods()
+    ->ewallets('SHOPEEPAY')
+    ->successUrl(route('orders.success', $order))
+    ->failureUrl(route('orders.failed', $order))
     ->create();
 
 // Later, retrieve payments for this order
 $orderPayments = $order->payments;
 ```
 
-### Example 4: With Line Items
+### Example 4: Card Payment with 3DS
 
 ```php
-$payment = Xendit::paymentRequest()
-    ->amount(150000)
-    ->email('customer@example.com')
-    ->items([
-        [
-            'name' => 'Product A',
-            'quantity' => 2,
-            'price' => 50000,
-            'category' => 'Electronics',
+$payment = Xendit::paymentRequest()->create([
+    'reference_id' => 'ORDER-' . time(),
+    'amount' => 100000,
+    'currency' => 'IDR',
+    'country' => 'ID',
+    'channel_code' => 'CARDS',
+    'channel_properties' => [
+        'skip_three_ds' => false,
+        'success_return_url' => 'https://yourapp.com/success',
+        'failure_return_url' => 'https://yourapp.com/failed',
+        'card_details' => [
+            'card_number' => '4000000000001091',
+            'expiry_month' => '12',
+            'expiry_year' => '2025',
+            'cvn' => '123',
+            'cardholder_first_name' => 'John',
+            'cardholder_last_name' => 'Doe',
         ],
-        [
-            'name' => 'Product B',
-            'quantity' => 1,
-            'price' => 50000,
-            'category' => 'Accessories',
-        ],
-    ])
-    ->allMethods()
-    ->create();
+    ],
+    'description' => 'Card payment with 3DS',
+]);
 ```
 
-### Example 5: Custom Payment Methods
+### Example 5: QR Code Payment
 
 ```php
 $payment = Xendit::paymentRequest()
-    ->amount(100000)
-    ->email('customer@example.com')
-    ->paymentMethods([
-        [
-            'type' => 'EWALLET',
-            'ewallet' => [
-                'channel_code' => 'SHOPEEPAY',
-            ],
-            'reusability' => ['type' => 'ONE_TIME_USE'],
-        ],
-        [
-            'type' => 'VIRTUAL_ACCOUNT',
-            'virtual_account' => [
-                'channel_code' => 'BCA',
-            ],
-            'reusability' => ['type' => 'ONE_TIME_USE'],
-        ],
+    ->amount(75000)
+    ->currency('THB')
+    ->qrCode('QRPROMPTPAY')
+    ->channelProperties('QRPROMPTPAY', [
+        'qr_string_type' => 'DYNAMIC',
+    ])
+    ->description('Restaurant bill - Table 15')
+    ->metadata([
+        'table_number' => '15',
+        'branch' => 'bangkok_central',
     ])
     ->create();
+
+// Display QR code
+echo $payment->payment_details['qr_string'];
 ```
 
 ## Response Structure

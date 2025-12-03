@@ -95,47 +95,57 @@ class PaymentRequestBuilder extends BaseBuilder
     }
 
     /**
-     * Add all e-wallet payment methods
+     * Add e-wallet payment method (ShopeePay)
      */
-    public function ewallets(): static
+    public function ewallets(string $channelCode = 'SHOPEEPAY'): static
     {
-        $this->paymentMethod('EWALLET', ['type' => 'ONE_TIME_USE']);
+        $this->paymentMethods[] = [
+            'channel_code' => $channelCode,
+        ];
         return $this;
     }
 
     /**
      * Add virtual account payment method
      */
-    public function virtualAccounts(): static
+    public function virtualAccounts(string $channelCode = 'BCA'): static
     {
-        $this->paymentMethod('VIRTUAL_ACCOUNT', ['type' => 'ONE_TIME_USE']);
+        $this->paymentMethods[] = [
+            'channel_code' => $channelCode,
+        ];
         return $this;
     }
 
     /**
      * Add QR code payment method
      */
-    public function qrCode(): static
+    public function qrCode(string $channelCode = 'QRIS'): static
     {
-        $this->paymentMethod('QR_CODE', ['type' => 'ONE_TIME_USE']);
+        $this->paymentMethods[] = [
+            'channel_code' => $channelCode,
+        ];
         return $this;
     }
 
     /**
      * Add over-the-counter payment method
      */
-    public function overTheCounter(): static
+    public function overTheCounter(string $channelCode = 'ALFAMART'): static
     {
-        $this->paymentMethod('OVER_THE_COUNTER', ['type' => 'ONE_TIME_USE']);
+        $this->paymentMethods[] = [
+            'channel_code' => $channelCode,
+        ];
         return $this;
     }
 
     /**
      * Add direct debit payment method
      */
-    public function directDebit(): static
+    public function directDebit(string $channelCode = 'BCA_KLIKPAY'): static
     {
-        $this->paymentMethod('DIRECT_DEBIT', ['type' => 'ONE_TIME_USE']);
+        $this->paymentMethods[] = [
+            'channel_code' => $channelCode,
+        ];
         return $this;
     }
 
@@ -144,20 +154,31 @@ class PaymentRequestBuilder extends BaseBuilder
      */
     public function card(): static
     {
-        $this->paymentMethod('CARD');
+        $this->paymentMethods[] = [
+            'channel_code' => 'CARDS',
+        ];
+        return $this;
+    }
+
+    /**
+     * Set specific channel code
+     */
+    public function channelCode(string $channelCode): static
+    {
+        $this->paymentMethods = [[
+            'channel_code' => $channelCode,
+        ]];
         return $this;
     }
 
     /**
      * Add all available payment methods
+     * Note: Can only use one payment method at a time with current API
      */
     public function allMethods(): static
     {
-        return $this
-            ->ewallets()
-            ->virtualAccounts()
-            ->qrCode()
-            ->overTheCounter();
+        // Default to SHOPEEPAY for Malaysia
+        return $this->ewallets('SHOPEEPAY');
     }
 
     /**
@@ -180,9 +201,15 @@ class PaymentRequestBuilder extends BaseBuilder
 
     /**
      * Create the payment request
+     * Supports both fluent methods and array parameter
      */
-    public function create(): XenditPayment
+    public function create(array $data = []): XenditPayment
     {
+        // If data is provided, it takes precedence over fluent methods
+        if (!empty($data)) {
+            $this->mergeDataAttributes($data);
+        }
+
         $externalId = $this->generateExternalId();
 
         // Create payment record
@@ -209,52 +236,90 @@ class PaymentRequestBuilder extends BaseBuilder
     }
 
     /**
+     * Merge array data with builder attributes (data takes precedence)
+     */
+    protected function mergeDataAttributes(array $data): void
+    {
+        // Map of data keys to attribute keys
+        $attributeMap = [
+            'reference_id' => 'external_id',
+            'amount' => 'amount',
+            'currency' => 'currency',
+            'description' => 'description',
+            'metadata' => 'metadata',
+            'customer' => 'customer',
+            'success_redirect_url' => 'success_redirect_url',
+            'failure_redirect_url' => 'failure_redirect_url',
+            'items' => 'items',
+            'channel_properties' => 'channel_properties',
+        ];
+
+        // Use collection to map and merge attributes (data takes precedence)
+        collect($attributeMap)->each(function ($attributeKey, $dataKey) use ($data) {
+            if (isset($data[$dataKey])) {
+                $this->attributes[$attributeKey] = $data[$dataKey];
+            }
+        });
+
+        // Handle payment methods separately
+        if (isset($data['payment_method'])) {
+            $paymentMethod = $data['payment_method'];
+
+            // Extract payment methods array from different structures
+            $this->paymentMethods = match (true) {
+                isset($paymentMethod['payment_methods']) => $paymentMethod['payment_methods'],
+                is_array($paymentMethod) && isset($paymentMethod[0]) => $paymentMethod,
+                isset($paymentMethod['type']) => [$paymentMethod],
+                default => $this->paymentMethods,
+            };
+        }
+    }
+
+    /**
      * Build API payload for Xendit
      */
     protected function buildApiPayload(string $externalId): array
     {
         $payload = [
             'reference_id' => $externalId,
-            'amount' => $this->attributes['amount'],
+            'type' => 'PAY',
+            'country' => $this->attributes['country'] ?? $this->getCountryFromCurrency(),
             'currency' => $this->attributes['currency'] ?? config('xendit.default_currency', 'MYR'),
+            'request_amount' => $this->attributes['amount'],
+            'capture_method' => $this->attributes['capture_method'] ?? 'AUTOMATIC',
         ];
-
-        // Add customer information
-        if (isset($this->attributes['customer'])) {
-            $payload['customer'] = $this->attributes['customer'];
-        }
 
         // Add description
         if (isset($this->attributes['description'])) {
             $payload['description'] = $this->attributes['description'];
         }
 
-        // Add payment methods
-        if (!empty($this->paymentMethods)) {
-            $payload['payment_method'] = [
-                'type' => 'PAYMENT_METHOD_LIST',
-                'payment_methods' => $this->paymentMethods,
-                'reusability' => 'ONE_TIME_USE',
-            ];
+        // Add channel code (if single payment method)
+        if (count($this->paymentMethods) === 1) {
+            $method = $this->paymentMethods[0];
+
+            if (isset($method['channel_code'])) {
+                $payload['channel_code'] = $method['channel_code'];
+            }
+
+            if (isset($method['channel_properties'])) {
+                $payload['channel_properties'] = $method['channel_properties'];
+            }
         }
 
-        // Add redirect URLs
+        // Add redirect URLs to channel properties
+        $channelProperties = $payload['channel_properties'] ?? [];
+
         if (isset($this->attributes['success_redirect_url'])) {
-            $payload['success_redirect_url'] = $this->attributes['success_redirect_url'];
+            $channelProperties['success_return_url'] = $this->attributes['success_redirect_url'];
         }
 
         if (isset($this->attributes['failure_redirect_url'])) {
-            $payload['failure_redirect_url'] = $this->attributes['failure_redirect_url'];
+            $channelProperties['failure_return_url'] = $this->attributes['failure_redirect_url'];
         }
 
-        // Add channel properties
-        if (isset($this->attributes['channel_properties'])) {
-            $payload['channel_properties'] = $this->attributes['channel_properties'];
-        }
-
-        // Add items
-        if (isset($this->attributes['items'])) {
-            $payload['items'] = $this->attributes['items'];
+        if (!empty($channelProperties)) {
+            $payload['channel_properties'] = $channelProperties;
         }
 
         // Add metadata
@@ -263,5 +328,20 @@ class PaymentRequestBuilder extends BaseBuilder
         }
 
         return array_filter($payload);
+    }
+
+    /**
+     * Get country code from currency
+     */
+    protected function getCountryFromCurrency(): string
+    {
+        return match ($this->attributes['currency'] ?? config('xendit.default_currency', 'MYR')) {
+            'IDR' => 'ID',
+            'PHP' => 'PH',
+            'THB' => 'TH',
+            'VND' => 'VN',
+            'MYR' => 'MY',
+            default => 'ID',
+        };
     }
 }

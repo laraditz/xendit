@@ -15,7 +15,6 @@ class PaymentRequestService
 
     /**
      * Create a payment request
-     * https://docs.xendit.co/apidocs/create-payment-request
      */
     public function create(array $data): array
     {
@@ -24,7 +23,6 @@ class PaymentRequestService
 
     /**
      * Get payment request by ID
-     * https://docs.xendit.co/apidocs/get-payment-request
      */
     public function get(string $id): array
     {
@@ -33,7 +31,6 @@ class PaymentRequestService
 
     /**
      * Cancel a payment request
-     * https://docs.xendit.co/apidocs/cancel-payment-request
      */
     public function cancel(string $id): array
     {
@@ -42,7 +39,6 @@ class PaymentRequestService
 
     /**
      * Simulate payment (test mode only)
-     * https://docs.xendit.co/apidocs/simulate-payment-test-mode
      */
     public function simulate(string $id, array $data = []): array
     {

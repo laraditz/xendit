@@ -69,17 +69,16 @@ XENDIT_CURRENCY=MYR
 
 ## Usage
 
-### Creating Payment Request (All Payment Methods)
+### Creating Payment Request (Fluent API)
 
 ```php
 use Laraditz\Xendit\Facades\Xendit;
 
 $payment = Xendit::paymentRequest()
     ->amount(100000)
+    ->currency('MYR')
     ->description('Payment for Order #123')
-    ->email('customer@example.com')
-    ->phone('+60123456789')
-    ->allMethods() // Enable all payment methods (e-wallets, VA, QR, OTC)
+    ->ewallets('SHOPEEPAY') // Specify channel code
     ->successUrl('https://yourapp.com/success')
     ->failureUrl('https://yourapp.com/failed')
     ->metadata(['order_id' => 123])
@@ -89,48 +88,82 @@ $payment = Xendit::paymentRequest()
 return redirect($payment->payment_url);
 ```
 
-### Payment Request with Specific Methods
+### Payment Request with Array
 
 ```php
 use Laraditz\Xendit\Facades\Xendit;
 
-// Only e-wallets and virtual accounts
+// Using array parameter
+$payment = Xendit::paymentRequest()->create([
+    'reference_id' => 'ORDER-123',
+    'amount' => 100000,
+    'currency' => 'MYR',
+    'channel_code' => 'SHOPEEPAY',
+    'channel_properties' => [
+        'success_return_url' => 'https://yourapp.com/success',
+        'failure_return_url' => 'https://yourapp.com/failed',
+    ],
+    'description' => 'Payment for Order #123',
+    'metadata' => [
+        'order_id' => 123,
+    ],
+]);
+```
+
+### Payment Request with Specific Channels
+
+```php
+use Laraditz\Xendit\Facades\Xendit;
+
+// E-wallet (ShopeePay)
 $payment = Xendit::paymentRequest()
     ->amount(50000)
-    ->email('customer@example.com')
-    ->ewallets() // DANA, OVO, ShopeePay, LinkAja, etc.
-    ->virtualAccounts() // BCA, BNI, BRI, Mandiri, etc.
+    ->ewallets('SHOPEEPAY')
+    ->successUrl('https://yourapp.com/success')
     ->create();
 
-// Only QR code
+// Virtual Account (BCA)
+$payment = Xendit::paymentRequest()
+    ->amount(50000)
+    ->virtualAccounts('BCA')
+    ->create();
+
+// QR Code (QRIS)
 $payment = Xendit::paymentRequest()
     ->amount(75000)
-    ->email('customer@example.com')
-    ->qrCode() // QRIS
+    ->qrCode('QRIS')
+    ->create();
+
+// Cards
+$payment = Xendit::paymentRequest()
+    ->amount(100000)
+    ->card()
+    ->create();
+
+// Or use specific channel code directly
+$payment = Xendit::paymentRequest()
+    ->amount(100000)
+    ->channelCode('GRABPAY')
     ->create();
 ```
 
-### Payment Request with Line Items
+### Payment Request with Channel Properties
 
 ```php
 use Laraditz\Xendit\Facades\Xendit;
 
+// Using channel properties for additional configuration
 $payment = Xendit::paymentRequest()
     ->amount(250000)
-    ->email('customer@example.com')
-    ->items([
-        [
-            'name' => 'Product 1',
-            'quantity' => 2,
-            'price' => 100000,
-        ],
-        [
-            'name' => 'Product 2',
-            'quantity' => 1,
-            'price' => 50000,
-        ],
+    ->currency('MYR')
+    ->channelCode('SHOPEEPAY')
+    ->channelProperties('SHOPEEPAY', [
+        'success_return_url' => 'https://yourapp.com/success',
+        'failure_return_url' => 'https://yourapp.com/failed',
     ])
-    ->allMethods()
+    ->metadata([
+        'order_id' => 123,
+    ])
     ->create();
 ```
 
@@ -140,14 +173,15 @@ $payment = Xendit::paymentRequest()
 // Attach payment to Order model
 $payment = Xendit::paymentRequest()
     ->amount(100000)
-    ->allMethods()
+    ->currency('MYR')
+    ->ewallets('SHOPEEPAY')
     ->for($order)
     ->create();
 
 // Attach payment to User model
 $payment = Xendit::paymentRequest()
     ->amount(50000)
-    ->ewallets()
+    ->card()
     ->for($user)
     ->create();
 
