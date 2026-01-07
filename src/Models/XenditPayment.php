@@ -25,6 +25,7 @@ class XenditPayment extends Model
         'amount',
         'currency',
         'description',
+        'customer_id',
         'payer_email',
         'payer_name',
         'payer_phone',
