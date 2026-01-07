@@ -25,7 +25,8 @@
   },
   "autoload": {
     "psr-4": {
-      "Laraditz\\Xendit\\": "src"
+      "Laraditz\\Xendit\\": "src",
+      "Laraditz\\Xendit\\Database\\Seeders\\": "database/seeders/"
     }
   },
   "autoload-dev": {
