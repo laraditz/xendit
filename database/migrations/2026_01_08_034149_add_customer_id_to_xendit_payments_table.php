@@ -11,7 +11,10 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('xendit_payments', function (Blueprint $table) {
-            $table->string('customer_id')->nullable()->after('description');
+            $table->after('description', function ($table) {
+                $table->string('customer_id')->nullable();
+                $table->string('payer_id')->nullable();
+            });
         });
     }
 
@@ -21,7 +24,7 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::table('xendit_payments', function (Blueprint $table) {
-            $table->dropColumn('customer_id');
+            $table->dropColumn(['customer_id', 'payer_id']);
         });
     }
 };
