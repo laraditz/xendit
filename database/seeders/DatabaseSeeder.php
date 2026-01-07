@@ -1,6 +1,6 @@
 <?php
 
-namespace Laraditz\MyInvois\Database\Seeders;
+namespace Laraditz\Xendit\Database\Seeders;
 
 use Illuminate\Database\Seeder;
 
