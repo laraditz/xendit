@@ -21,7 +21,24 @@ class PaymentRequestBuilder extends BaseBuilder
      */
     public function customer(array $customer): static
     {
-        $this->attributes['customer'] = $customer;
+        // $this->attributes['customer'] = $customer;
+        if (isset($customer['email'])) {
+            $this->attributes['payer_email'] = $customer['email'];
+        }
+
+        if (isset($customer['mobile_number'])) {
+            $this->attributes['payer_phone'] = $customer['mobile_number'];
+        }
+
+        if (isset($customer['given_names'])) {
+            $this->attributes['payer_name'] = $customer['given_names'];
+        }
+        return $this;
+    }
+
+    public function customerId(string $customerId): static
+    {
+        $this->attributes['customer_id'] = $customerId;
         return $this;
     }
 
@@ -30,7 +47,7 @@ class PaymentRequestBuilder extends BaseBuilder
      */
     public function email(string $email): static
     {
-        $this->attributes['customer']['email'] = $email;
+        $this->attributes['payer_email'] = $email;
         return $this;
     }
 
@@ -39,7 +56,7 @@ class PaymentRequestBuilder extends BaseBuilder
      */
     public function phone(string $phone): static
     {
-        $this->attributes['customer']['mobile_number'] = $phone;
+        $this->attributes['payer_phone'] = $phone;
         return $this;
     }
 
@@ -48,7 +65,7 @@ class PaymentRequestBuilder extends BaseBuilder
      */
     public function givenNames(string $givenNames): static
     {
-        $this->attributes['customer']['given_names'] = $givenNames;
+        $this->attributes['payer_name'] = $givenNames;
         return $this;
     }
 
@@ -214,12 +231,18 @@ class PaymentRequestBuilder extends BaseBuilder
 
         $externalId = $this->generateExternalId();
 
+        // dd($this->attributes, $this->getPayableAttributes(), [
+        //     'external_id' => $externalId,
+        //     'payment_type' => PaymentType::PaymentRequest->value,
+        // ]);
+
         // Create payment record
         $payment = XenditPayment::create(array_merge(
             $this->attributes,
             $this->getPayableAttributes(),
             [
                 'external_id' => $externalId,
+                'payment_channel' => $this->paymentMethods[0]['channel_code'] ?? null,
                 'payment_type' => PaymentType::PaymentRequest->value,
             ]
         ));
@@ -245,7 +268,7 @@ class PaymentRequestBuilder extends BaseBuilder
         // Update payment with Xendit response (v3 API structure)
         $payment->update([
             'xendit_id' => $response['payment_request_id'] ?? $response['id'] ?? null,
-            'payment_channel' => $response['channel_code'] ?? null,
+            'payment_channel' => $response['channel_code'] ?? $payment->payment_channel ?? null,
             'payment_url' => $paymentUrl,
             'success_redirect_url' => $response['channel_properties']['success_return_url'] ?? null,
             'failure_redirect_url' => $response['channel_properties']['failure_return_url'] ?? null,
@@ -268,7 +291,6 @@ class PaymentRequestBuilder extends BaseBuilder
             'currency' => 'currency',
             'description' => 'description',
             'metadata' => 'metadata',
-            'customer' => 'customer',
             'success_redirect_url' => 'success_redirect_url',
             'failure_redirect_url' => 'failure_redirect_url',
             'items' => 'items',
@@ -316,6 +338,26 @@ class PaymentRequestBuilder extends BaseBuilder
         // Add description
         if (isset($this->attributes['description'])) {
             $payload['description'] = $this->attributes['description'];
+        }
+
+        if (isset($this->attributes['payer_email'])) {
+            $payload['customer']['email'] = $this->attributes['payer_email'];
+        }
+
+        if (isset($this->attributes['payer_phone'])) {
+            $payload['customer']['mobile_number'] = $this->attributes['payer_phone'];
+        }
+
+        if (isset($this->attributes['payer_name'])) {
+            $payload['customer']['individual_detail']['given_names'] = $this->attributes['payer_name'];
+        }
+
+        if (isset($payload['customer'])) {
+            $payload['customer']['type'] = "INDIVIDUAL";
+        }
+
+        if ($this->attributes['customer_id'] && isset($payload['customer'])) {
+            $payload['customer']['reference_id'] = $this->attributes['customer_id'];
         }
 
         // Add channel code (if single payment method)
