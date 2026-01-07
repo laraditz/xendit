@@ -22,6 +22,10 @@ class PaymentRequestBuilder extends BaseBuilder
     public function customer(array $customer): static
     {
         // $this->attributes['customer'] = $customer;
+        if (isset($customer['reference_id'])) {
+            $this->attributes['payer_id'] = $customer['reference_id'];
+        }
+
         if (isset($customer['email'])) {
             $this->attributes['payer_email'] = $customer['email'];
         }
@@ -39,6 +43,12 @@ class PaymentRequestBuilder extends BaseBuilder
     public function customerId(string $customerId): static
     {
         $this->attributes['customer_id'] = $customerId;
+        return $this;
+    }
+
+    public function payerReferenceId(string $payerReferenceId): static
+    {
+        $this->attributes['payer_id'] = $payerReferenceId;
         return $this;
     }
 
@@ -236,6 +246,8 @@ class PaymentRequestBuilder extends BaseBuilder
         //     'payment_type' => PaymentType::PaymentRequest->value,
         // ]);
 
+        // dd($this->attributes);
+
         // Create payment record
         $payment = XenditPayment::create(array_merge(
             $this->attributes,
@@ -251,8 +263,7 @@ class PaymentRequestBuilder extends BaseBuilder
         $payload = $this->buildApiPayload($externalId);
 
         // Debug: Log the payload
-        // \Log::info('Xendit Payment Request Payload:', $payload);
-
+        // \Log::info('Xendit Payment Request Payload:', $payload); 
         $response = $this->service->create($payload);
 
         // Debug: Log the response
@@ -268,6 +279,7 @@ class PaymentRequestBuilder extends BaseBuilder
         // Update payment with Xendit response (v3 API structure)
         $payment->update([
             'xendit_id' => $response['payment_request_id'] ?? $response['id'] ?? null,
+            'customer_id' => $response['customer_id'] ?? null,
             'payment_channel' => $response['channel_code'] ?? $payment->payment_channel ?? null,
             'payment_url' => $paymentUrl,
             'success_redirect_url' => $response['channel_properties']['success_return_url'] ?? null,
@@ -356,8 +368,12 @@ class PaymentRequestBuilder extends BaseBuilder
             $payload['customer']['type'] = "INDIVIDUAL";
         }
 
-        if ($this->attributes['customer_id'] && isset($payload['customer'])) {
-            $payload['customer']['reference_id'] = $this->attributes['customer_id'];
+        if ($this->attributes['payer_id'] && isset($payload['customer'])) {
+            $payload['customer']['reference_id'] = $this->attributes['payer_id'];
+        }
+
+        if (isset($payload['customer_id'])) {
+            $payload['customer_id'] = $this->attributes['customer_id'];
         }
 
         // Add channel code (if single payment method)
@@ -407,7 +423,7 @@ class PaymentRequestBuilder extends BaseBuilder
             'THB' => 'TH',
             'VND' => 'VN',
             'MYR' => 'MY',
-            default => 'ID',
+            default => 'MY',
         };
     }
 }
