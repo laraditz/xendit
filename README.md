@@ -59,6 +59,12 @@ Run the migrations:
 php artisan migrate
 ```
 
+Run the seeder:
+
+```bash
+php artisan db:seed --class=Laraditz\\Xendit\\Database\\Seeders\\DatabaseSeeder
+```
+
 Add your Xendit credentials to `.env`:
 
 ```env
