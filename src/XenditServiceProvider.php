@@ -49,7 +49,7 @@ class XenditServiceProvider extends ServiceProvider
 
         $migrationFiles = collect($files)
             ->mapWithKeys(function (string $file) use ($databasePath, $migrationPath, $date, &$time) {
-                $filename = Str::replaceEnd('.stub', '', $file);
+                $filename = Str::replace(Str::substr($file, 0, 17), '', $file);
 
                 $found = glob($migrationPath . '*' . $filename);
                 $time = date("His", strtotime($time) + 1); // ensure in order
