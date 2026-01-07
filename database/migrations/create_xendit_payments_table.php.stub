@@ -30,7 +30,7 @@ return new class extends Migration
             $table->string('payer_phone')->nullable();
 
             // URLs
-            $table->string('payment_url')->nullable(); // redirect URL for customer
+            $table->text('payment_url')->nullable(); // redirect URL for customer
             $table->string('callback_url')->nullable();
             $table->string('success_redirect_url')->nullable();
             $table->string('failure_redirect_url')->nullable();
