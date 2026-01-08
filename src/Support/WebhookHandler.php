@@ -46,8 +46,8 @@ class WebhookHandler
     {
         return XenditWebhookLog::create([
             'event_type' => $this->getEventType($payload),
-            'external_id' => $payload['external_id'] ?? null,
-            'xendit_id' => $payload['id'] ?? null,
+            'external_id' => data_get($payload, 'data.reference_id') ?? $payload['external_id'] ?? null,
+            'xendit_id' => data_get($payload, 'data.payment_id') ?? $payload['id'] ?? null,
             'payload' => $payload,
         ]);
     }
@@ -61,6 +61,7 @@ class WebhookHandler
 
         match (true) {
             // Payment webhooks
+            str_contains($eventType, 'payment.capture') => $this->handlePaymentCapture($payload),
             str_contains($eventType, 'payment.succeeded') || str_contains($eventType, 'payment.paid') => $this->handlePaymentSuccess($payload),
             str_contains($eventType, 'payment.failed') => $this->handlePaymentFailed($payload),
             str_contains($eventType, 'payment.expired') => $this->handlePaymentExpired($payload),
@@ -160,6 +161,30 @@ class WebhookHandler
         if ($payment) {
             $payment->markAsPaid($payload['id']);
             event(new PaymentPaid($payment));
+        }
+    }
+
+    /**
+     * Handle payment success webhook (current API)
+     */
+    protected function handlePaymentCapture(array $payload): void
+    {
+        $externalId = data_get($payload, 'data.reference_id');
+        $status = data_get($payload, 'data.status') ?? 'UNDEFINED';
+
+        $payment = XenditPayment::query()->where('external_id', $externalId)->first();
+
+        if ($payment) {
+            if (strtoupper($status) === 'SUCCEEDED') {
+                $payment->markAsPaid();
+                event(new PaymentPaid($payment));
+            } elseif (strtoupper($status) === 'EXPIRED') {
+                $payment->markAsExpired();
+                event(new PaymentExpired($payment));
+            } else {
+                $payment->markAsFailed();
+                event(new PaymentFailed($payment));
+            }
         }
     }
 

@@ -142,11 +142,19 @@ class XenditPayment extends Model
      */
     public function markAsPaid(?string $xenditId = null): self
     {
-        $this->update([
+        $updateData = [
             'status' => PaymentStatus::Paid,
             'paid_at' => now(),
-            'xendit_id' => $xenditId ?? $this->xendit_id,
-        ]);
+        ];
+
+        if ($xenditId) {
+            $updateData = [
+                ...$updateData,
+                'xendit_id' => $xenditId ?? $this->xendit_id,
+            ];
+        }
+
+        $this->update($updateData);
 
         return $this;
     }
