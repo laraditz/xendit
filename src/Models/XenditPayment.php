@@ -21,6 +21,7 @@ class XenditPayment extends Model
         'payable_type',
         'payment_type',
         'payment_channel',
+        'channel_properties',
         'status',
         'amount',
         'currency',
@@ -45,6 +46,7 @@ class XenditPayment extends Model
         'amount' => 'decimal:2',
         'metadata' => 'array',
         'payment_details' => 'array',
+        'channel_properties' => 'json',
         'paid_at' => 'datetime',
         'expired_at' => 'datetime',
     ];
