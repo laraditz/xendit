@@ -20,9 +20,13 @@ class XenditClient implements ClientInterface
         return $this->handleResponse($response);
     }
 
-    public function post(string $endpoint, array $data = []): array
+    public function post(string $endpoint, array $data = [], array $headers = []): array
     {
-        $response = $this->buildClient()->post($endpoint, $data);
+        $client = empty($headers)
+            ? $this->buildClient()
+            : $this->buildClient()->withHeaders($headers);
+
+        $response = $client->post($endpoint, $data);
 
         return $this->handleResponse($response);
     }
