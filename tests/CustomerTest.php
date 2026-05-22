@@ -63,4 +63,55 @@ class CustomerTest extends TestCase
 
         $this->assertSame($customer, $event->customer);
     }
+
+    public function test_customer_service_create_posts_to_customers_endpoint(): void
+    {
+        Http::fake([
+            'api.xendit.co/customers' => Http::response(['id' => 'cust_srv1', 'reference_id' => 'u1', 'type' => 'INDIVIDUAL'], 201),
+        ]);
+
+        $service = app(\Laraditz\Xendit\Services\CustomerService::class);
+        $result = $service->create(['reference_id' => 'u1', 'type' => 'INDIVIDUAL']);
+
+        $this->assertEquals('cust_srv1', $result['id']);
+        Http::assertSent(fn($r) => str_contains($r->url(), '/customers')
+            && $r->hasHeader('idempotency-key', 'u1')
+        );
+    }
+
+    public function test_customer_service_get_calls_correct_endpoint(): void
+    {
+        Http::fake([
+            'api.xendit.co/customers/cust_abc' => Http::response(['id' => 'cust_abc'], 200),
+        ]);
+
+        $service = app(\Laraditz\Xendit\Services\CustomerService::class);
+        $result = $service->get('cust_abc');
+
+        $this->assertEquals('cust_abc', $result['id']);
+    }
+
+    public function test_customer_service_list_passes_reference_id(): void
+    {
+        Http::fake([
+            'api.xendit.co/customers*' => Http::response(['data' => [], 'has_more' => false], 200),
+        ]);
+
+        $service = app(\Laraditz\Xendit\Services\CustomerService::class);
+        $service->list('u1');
+
+        Http::assertSent(fn($r) => str_contains($r->url(), 'reference_id=u1'));
+    }
+
+    public function test_customer_service_update_patches_correct_endpoint(): void
+    {
+        Http::fake([
+            'api.xendit.co/customers/cust_abc' => Http::response(['id' => 'cust_abc', 'email' => 'new@test.com'], 200),
+        ]);
+
+        $service = app(\Laraditz\Xendit\Services\CustomerService::class);
+        $result = $service->update('cust_abc', ['email' => 'new@test.com']);
+
+        $this->assertEquals('new@test.com', $result['email']);
+    }
 }
