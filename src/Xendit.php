@@ -2,8 +2,10 @@
 
 namespace Laraditz\Xendit;
 
+use Laraditz\Xendit\Builders\CustomerBuilder;
 use Laraditz\Xendit\Builders\PaymentRequestBuilder;
 use Laraditz\Xendit\Client\XenditClient;
+use Laraditz\Xendit\Services\CustomerService;
 use Laraditz\Xendit\Services\PaymentLinkService;
 use Laraditz\Xendit\Services\PaymentRequestService;
 use Laraditz\Xendit\Services\PaymentService;
@@ -19,6 +21,11 @@ class Xendit
     public function __construct(XenditClient $client)
     {
         $this->client = $client;
+    }
+
+    public function customer(): CustomerBuilder
+    {
+        return new CustomerBuilder(new CustomerService($this->client));
     }
 
     /**
