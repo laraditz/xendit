@@ -4,6 +4,7 @@ namespace Laraditz\Xendit;
 
 use Laraditz\Xendit\Builders\CustomerBuilder;
 use Laraditz\Xendit\Builders\PaymentRequestBuilder;
+use Laraditz\Xendit\Builders\SessionBuilder;
 use Laraditz\Xendit\Client\XenditClient;
 use Laraditz\Xendit\Services\CustomerService;
 use Laraditz\Xendit\Services\PaymentLinkService;
@@ -57,13 +58,9 @@ class Xendit
         return new PaymentTokenService($this->client);
     }
 
-    /**
-     * Access session operations (create, get, cancel)
-     * https://docs.xendit.co/apidocs/create-session
-     */
-    public function session(): SessionService
+    public function session(): SessionBuilder
     {
-        return new SessionService($this->client);
+        return new SessionBuilder(new SessionService($this->client));
     }
 
     /**
