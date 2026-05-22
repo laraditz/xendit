@@ -159,4 +159,24 @@ class SessionTest extends TestCase
         $this->assertInstanceOf(\Laraditz\Xendit\Models\XenditCustomer::class, $session->xenditCustomer);
         $this->assertEquals('cust_xyz', $session->xenditCustomer->xendit_id);
     }
+
+    public function test_session_events_hold_session_model(): void
+    {
+        $session = \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id' => 'ref-events',
+            'amount'       => 100.00,
+            'session_type' => 'PAY',
+            'mode'         => 'PAYMENT_LINK',
+        ]);
+
+        $created   = new \Laraditz\Xendit\Events\SessionCreated($session);
+        $completed = new \Laraditz\Xendit\Events\SessionCompleted($session);
+        $expired   = new \Laraditz\Xendit\Events\SessionExpired($session);
+        $canceled  = new \Laraditz\Xendit\Events\SessionCanceled($session);
+
+        $this->assertSame($session, $created->session);
+        $this->assertSame($session, $completed->session);
+        $this->assertSame($session, $expired->session);
+        $this->assertSame($session, $canceled->session);
+    }
 }
