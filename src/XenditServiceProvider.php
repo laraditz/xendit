@@ -7,10 +7,12 @@ use Illuminate\Support\ServiceProvider;
 use Laraditz\Xendit\Client\XenditClient;
 use Laraditz\Xendit\Models\XenditCustomer;
 use Laraditz\Xendit\Models\XenditPayment;
+use Laraditz\Xendit\Models\XenditSession;
 use Laraditz\Xendit\Models\XenditWebhookLog;
 use Laraditz\Xendit\Models\XenditTransaction;
 use Laraditz\Xendit\Observers\XenditCustomerObserver;
 use Laraditz\Xendit\Observers\XenditPaymentObserver;
+use Laraditz\Xendit\Observers\XenditSessionObserver;
 use Laraditz\Xendit\Observers\XenditWebhookLogObserver;
 use Laraditz\Xendit\Observers\XenditTransactionObserver;
 
@@ -26,6 +28,7 @@ class XenditServiceProvider extends ServiceProvider
 
         // Register observers
         XenditCustomer::observe(XenditCustomerObserver::class);
+        XenditSession::observe(XenditSessionObserver::class);
         XenditPayment::observe(XenditPaymentObserver::class);
         XenditTransaction::observe(XenditTransactionObserver::class);
         XenditWebhookLog::observe(XenditWebhookLogObserver::class);

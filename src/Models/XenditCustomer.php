@@ -32,7 +32,7 @@ class XenditCustomer extends Model
         'customer_details'  => 'array',
     ];
 
-    public function sessions(): HasMany
+    public function xenditSessions(): HasMany
     {
         return $this->hasMany(XenditSession::class, 'customer_id', 'xendit_id');
     }
