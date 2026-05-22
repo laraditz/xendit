@@ -44,4 +44,30 @@ class SessionTest extends TestCase
         $this->assertEquals('PAYMENT_LINK', SessionMode::PaymentLink->value);
         $this->assertEquals('COMPONENTS', SessionMode::Components->value);
     }
+
+    public function test_xendit_sessions_table_exists(): void
+    {
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('xendit_sessions'));
+    }
+
+    public function test_xendit_sessions_table_has_expected_columns(): void
+    {
+        $columns = \Illuminate\Support\Facades\Schema::getColumnListing('xendit_sessions');
+
+        foreach ([
+            'id', 'reference_id', 'payment_session_id',
+            'payable_id', 'payable_type',
+            'session_type', 'mode', 'status',
+            'amount', 'currency', 'country', 'description',
+            'customer_id', 'customer',
+            'payment_link_url', 'components_sdk_key',
+            'success_return_url', 'cancel_return_url',
+            'payment_id', 'payment_token_id',
+            'metadata', 'session_details',
+            'expires_at', 'completed_at', 'canceled_at',
+            'created_at', 'updated_at', 'deleted_at',
+        ] as $column) {
+            $this->assertContains($column, $columns, "Missing column: $column");
+        }
+    }
 }
