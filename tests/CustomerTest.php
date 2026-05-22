@@ -35,4 +35,32 @@ class CustomerTest extends TestCase
             $this->assertContains($column, $columns, "Missing column: $column");
         }
     }
+
+    public function test_observer_sets_default_type_to_individual(): void
+    {
+        $customer = \Laraditz\Xendit\Models\XenditCustomer::create([
+            'reference_id' => 'user-defaults',
+        ]);
+
+        $this->assertEquals(\Laraditz\Xendit\Enums\CustomerType::Individual, $customer->type);
+    }
+
+    public function test_customer_model_casts_type_to_enum(): void
+    {
+        $customer = \Laraditz\Xendit\Models\XenditCustomer::create([
+            'reference_id' => 'user-cast',
+            'type'         => 'BUSINESS',
+        ]);
+
+        $this->assertInstanceOf(\Laraditz\Xendit\Enums\CustomerType::class, $customer->fresh()->type);
+        $this->assertEquals(\Laraditz\Xendit\Enums\CustomerType::Business, $customer->fresh()->type);
+    }
+
+    public function test_customer_created_event_holds_model(): void
+    {
+        $customer = \Laraditz\Xendit\Models\XenditCustomer::create(['reference_id' => 'user-event']);
+        $event = new \Laraditz\Xendit\Events\CustomerCreated($customer);
+
+        $this->assertSame($customer, $event->customer);
+    }
 }
