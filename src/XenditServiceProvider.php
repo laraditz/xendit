@@ -5,9 +5,11 @@ namespace Laraditz\Xendit;
 use Illuminate\Support\Str;
 use Illuminate\Support\ServiceProvider;
 use Laraditz\Xendit\Client\XenditClient;
+use Laraditz\Xendit\Models\XenditCustomer;
 use Laraditz\Xendit\Models\XenditPayment;
 use Laraditz\Xendit\Models\XenditWebhookLog;
 use Laraditz\Xendit\Models\XenditTransaction;
+use Laraditz\Xendit\Observers\XenditCustomerObserver;
 use Laraditz\Xendit\Observers\XenditPaymentObserver;
 use Laraditz\Xendit\Observers\XenditWebhookLogObserver;
 use Laraditz\Xendit\Observers\XenditTransactionObserver;
@@ -23,6 +25,7 @@ class XenditServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
 
         // Register observers
+        XenditCustomer::observe(XenditCustomerObserver::class);
         XenditPayment::observe(XenditPaymentObserver::class);
         XenditTransaction::observe(XenditTransactionObserver::class);
         XenditWebhookLog::observe(XenditWebhookLogObserver::class);
