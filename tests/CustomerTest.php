@@ -228,4 +228,11 @@ class CustomerTest extends TestCase
         $this->assertIsArray($result);
         $this->assertEquals('new@test.com', $result['email']);
     }
+
+    public function test_xendit_customer_returns_customer_builder(): void
+    {
+        $builder = \Laraditz\Xendit\Facades\Xendit::customer();
+
+        $this->assertInstanceOf(\Laraditz\Xendit\Builders\CustomerBuilder::class, $builder);
+    }
 }

@@ -437,4 +437,11 @@ class SessionTest extends TestCase
         $this->assertNotNull($session->fresh()->expires_at);
         Event::assertDispatched(\Laraditz\Xendit\Events\SessionExpired::class);
     }
+
+    public function test_xendit_session_returns_session_builder(): void
+    {
+        $builder = \Laraditz\Xendit\Facades\Xendit::session();
+
+        $this->assertInstanceOf(\Laraditz\Xendit\Builders\SessionBuilder::class, $builder);
+    }
 }
