@@ -27,7 +27,8 @@ A Laravel package for seamless integration with Xendit payment gateway. Built fr
 - ✅ **[Payment Request](docs/payment-request.md)** - Create, get, cancel, simulate
 - ✅ **[Payment](docs/payment.md)** - Get status, cancel, capture
 - ✅ **[Payment Token](docs/payment-token.md)** - Create, get, deactivate
-- ✅ **[Session](docs/session.md)** - Create, get, cancel
+- ✅ **[Customer](docs/customer.md)** - Create, get, list, update
+- ✅ **[Session](docs/session.md)** - Create, get, cancel with DB persistence
 - ✅ **[Refund](docs/refund.md)** - Create refunds
 - ✅ **[Payment Link](docs/payment-link.md)** - Create and manage payment links
 - ✅ **[Transaction](docs/transaction.md)** - Get and list transactions
@@ -231,24 +232,60 @@ $tokenStatus = Xendit::paymentToken()->get($tokenId);
 Xendit::paymentToken()->cancel($tokenId);
 ```
 
+### Creating Customers
+
+```php
+use Laraditz\Xendit\Facades\Xendit;
+
+// Create an individual customer
+$customer = Xendit::customer()
+    ->referenceId('user-001')
+    ->givenNames('John')
+    ->surname('Doe')
+    ->email('john@example.com')
+    ->mobileNumber('+60123456789')
+    ->create();
+
+// $customer is a persisted XenditCustomer model
+echo $customer->xendit_id; // Xendit's customer ID
+
+// Get a customer by Xendit ID
+$data = Xendit::customer()->get('cust_abc123');
+
+// List customers by reference ID
+$list = Xendit::customer()->list('user-001');
+
+// Update a customer
+$updated = Xendit::customer()->update('cust_abc123', [
+    'email' => 'new@example.com',
+]);
+```
+
 ### Creating Sessions
 
 ```php
 use Laraditz\Xendit\Facades\Xendit;
 
-// Create a session
-$session = Xendit::session()->create([
-    'amount' => 100000,
-    'currency' => 'MYR',
-    'success_return_url' => 'https://yourapp.com/success',
-    'failure_return_url' => 'https://yourapp.com/failed',
-]);
+// Create a PAY session (Payment Link mode)
+$session = Xendit::session()
+    ->referenceId('order-001')
+    ->amount(100.00)
+    ->currency('MYR')
+    ->country('MY')
+    ->sessionType('PAY')
+    ->mode('PAYMENT_LINK')
+    ->successUrl('https://yourapp.com/success')
+    ->cancelUrl('https://yourapp.com/cancel')
+    ->create();
 
-// Get session status
-$sessionStatus = Xendit::session()->get($sessionId);
+// $session is a persisted XenditSession model
+return redirect($session->payment_link_url);
+
+// Get session details from Xendit API
+$data = Xendit::session()->get($session->payment_session_id);
 
 // Cancel a session
-Xendit::session()->cancel($sessionId);
+Xendit::session()->cancel($session->payment_session_id);
 ```
 
 ### Processing Refunds
@@ -342,6 +379,10 @@ use Laraditz\Xendit\Events\PaymentTokenCreated;
 use Laraditz\Xendit\Events\PaymentTokenActivated;
 use Laraditz\Xendit\Events\RefundCreated;
 use Laraditz\Xendit\Events\RefundSucceeded;
+use Laraditz\Xendit\Events\SessionCreated;
+use Laraditz\Xendit\Events\SessionCompleted;
+use Laraditz\Xendit\Events\SessionExpired;
+use Laraditz\Xendit\Events\SessionCanceled;
 
 protected $listen = [
     // Payment events
@@ -370,6 +411,20 @@ protected $listen = [
     ],
     RefundSucceeded::class => [
         ProcessRefund::class,
+    ],
+
+    // Session events
+    SessionCreated::class => [
+        LogSessionCreated::class,
+    ],
+    SessionCompleted::class => [
+        FulfillOrder::class,
+    ],
+    SessionExpired::class => [
+        CancelOrder::class,
+    ],
+    SessionCanceled::class => [
+        ReleaseReservedStock::class,
     ],
 ];
 ```
@@ -445,6 +500,7 @@ For detailed documentation on each service, please refer to:
 - **[Payment Request](docs/payment-request.md)** - Complete guide to creating payment requests with fluent builder
 - **[Payment](docs/payment.md)** - Managing payment status, cancellation, and capture
 - **[Payment Token](docs/payment-token.md)** - Saving and managing customer payment methods
+- **[Customer](docs/customer.md)** - Creating and managing Xendit customers with DB persistence
 - **[Session](docs/session.md)** - Creating secure payment sessions for checkout flows
 - **[Refund](docs/refund.md)** - Processing full and partial refunds
 - **[Payment Link](docs/payment-link.md)** - Generating shareable payment links for invoices

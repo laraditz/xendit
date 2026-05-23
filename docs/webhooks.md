@@ -58,6 +58,17 @@ The package dispatches Laravel events for all webhook notifications:
 | `RefundCreated` | Refund initiated | Refund request submitted |
 | `RefundSucceeded` | Refund completed | Refund processed successfully |
 
+### Session Events
+
+| Event | Description | Triggered When |
+|-------|-------------|----------------|
+| `SessionCreated` | Session created in your system | After `Xendit::session()->create()` succeeds |
+| `SessionCompleted` | Payment collected | Webhook `payment_session.completed` received |
+| `SessionExpired` | Session timed out | Webhook `payment_session.expired` received |
+| `SessionCanceled` | Session canceled | After `Xendit::session()->cancel()` is called |
+
+All session events expose `$event->session` — an `XenditSession` model instance.
+
 ### Generic Event
 
 | Event | Description | Triggered When |
@@ -83,6 +94,10 @@ use Laraditz\Xendit\Events\PaymentTokenCreated;
 use Laraditz\Xendit\Events\PaymentTokenActivated;
 use Laraditz\Xendit\Events\RefundCreated;
 use Laraditz\Xendit\Events\RefundSucceeded;
+use Laraditz\Xendit\Events\SessionCreated;
+use Laraditz\Xendit\Events\SessionCompleted;
+use Laraditz\Xendit\Events\SessionExpired;
+use Laraditz\Xendit\Events\SessionCanceled;
 use Laraditz\Xendit\Events\WebhookReceived;
 use App\Listeners\SendPaymentConfirmation;
 use App\Listeners\CancelExpiredOrder;
@@ -108,6 +123,15 @@ class EventServiceProvider extends ServiceProvider
         ],
         PaymentTokenCreated::class => [
             LogPaymentToken::class,
+        ],
+        SessionCompleted::class => [
+            FulfillOrder::class,
+        ],
+        SessionExpired::class => [
+            CancelPendingOrder::class,
+        ],
+        SessionCanceled::class => [
+            ReleaseReservedStock::class,
         ],
         WebhookReceived::class => [
             LogWebhookEvent::class,
@@ -472,6 +496,24 @@ $event->payload; // Array of token data
 ]
 ```
 
+### SessionCompleted / SessionExpired / SessionCanceled Events
+
+```php
+$event->session; // XenditSession model instance
+
+// Access fields
+$session = $event->session;
+$session->reference_id;       // your reference
+$session->payment_session_id; // Xendit's session ID
+$session->status;             // SessionStatus enum
+$session->amount;             // decimal
+$session->payment_link_url;   // redirect URL
+$session->completed_at;       // set on completion
+$session->canceled_at;        // set on cancellation
+$session->payable;            // polymorphic: your Order, User, etc.
+$session->xenditCustomer;     // XenditCustomer model (if customer_id set)
+```
+
 ### WebhookReceived Event
 
 ```php
@@ -758,3 +800,5 @@ class CheckWebhookHealth extends Command
 - [Payment Request](payment-request.md) - Creating payments
 - [Refund](refund.md) - Processing refunds
 - [Payment Token](payment-token.md) - Saved payment methods
+- [Customer](customer.md) - Managing Xendit customers
+- [Session](session.md) - Creating payment sessions
