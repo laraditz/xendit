@@ -373,4 +373,68 @@ class SessionTest extends TestCase
         $this->assertIsArray($result);
         $this->assertEquals('ps-abc123', $result['payment_session_id']);
     }
+
+    public function test_webhook_handler_marks_session_completed(): void
+    {
+        Event::fake();
+
+        $session = \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id'       => 'order-webhook-complete',
+            'payment_session_id' => 'ps-wh1',
+            'amount'             => 100.00,
+            'session_type'       => 'PAY',
+            'mode'               => 'PAYMENT_LINK',
+        ]);
+
+        $handler = app(\Laraditz\Xendit\Support\WebhookHandler::class);
+        $handler->handle([
+            'event'       => 'payment_session.completed',
+            'business_id' => 'biz-123',
+            'created'     => now()->toIso8601String(),
+            'data'        => [
+                'payment_session_id' => 'ps-wh1',
+                'reference_id'       => 'order-webhook-complete',
+                'status'             => 'COMPLETED',
+            ],
+        ]);
+
+        $this->assertEquals(
+            \Laraditz\Xendit\Enums\SessionStatus::Completed,
+            $session->fresh()->status
+        );
+        Event::assertDispatched(\Laraditz\Xendit\Events\SessionCompleted::class);
+    }
+
+    public function test_webhook_handler_marks_session_expired(): void
+    {
+        Event::fake();
+
+        $session = \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id'       => 'order-webhook-expire',
+            'payment_session_id' => 'ps-wh2',
+            'amount'             => 100.00,
+            'session_type'       => 'PAY',
+            'mode'               => 'PAYMENT_LINK',
+            'expires_at'         => now()->addMinutes(30),
+        ]);
+
+        $handler = app(\Laraditz\Xendit\Support\WebhookHandler::class);
+        $handler->handle([
+            'event'       => 'payment_session.expired',
+            'business_id' => 'biz-123',
+            'created'     => now()->toIso8601String(),
+            'data'        => [
+                'payment_session_id' => 'ps-wh2',
+                'reference_id'       => 'order-webhook-expire',
+                'status'             => 'EXPIRED',
+            ],
+        ]);
+
+        $this->assertEquals(
+            \Laraditz\Xendit\Enums\SessionStatus::Expired,
+            $session->fresh()->status
+        );
+        $this->assertNotNull($session->fresh()->expires_at);
+        Event::assertDispatched(\Laraditz\Xendit\Events\SessionExpired::class);
+    }
 }

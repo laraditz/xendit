@@ -9,8 +9,11 @@ use Laraditz\Xendit\Events\PaymentTokenActivated;
 use Laraditz\Xendit\Events\PaymentTokenCreated;
 use Laraditz\Xendit\Events\RefundCreated;
 use Laraditz\Xendit\Events\RefundSucceeded;
+use Laraditz\Xendit\Events\SessionCompleted;
+use Laraditz\Xendit\Events\SessionExpired;
 use Laraditz\Xendit\Events\WebhookReceived;
 use Laraditz\Xendit\Models\XenditPayment;
+use Laraditz\Xendit\Models\XenditSession;
 use Laraditz\Xendit\Models\XenditWebhookLog;
 
 class WebhookHandler
@@ -47,7 +50,10 @@ class WebhookHandler
         return XenditWebhookLog::create([
             'event_type' => $this->getEventType($payload),
             'external_id' => data_get($payload, 'data.reference_id') ?? $payload['external_id'] ?? null,
-            'xendit_id' => data_get($payload, 'data.payment_id') ?? $payload['id'] ?? null,
+            'xendit_id' => data_get($payload, 'data.payment_session_id')
+                        ?? data_get($payload, 'data.payment_id')
+                        ?? $payload['id']
+                        ?? null,
             'payload' => $payload,
         ]);
     }
@@ -73,6 +79,10 @@ class WebhookHandler
             // Refund webhooks
             str_contains($eventType, 'refund.created') => $this->handleRefundCreated($payload),
             str_contains($eventType, 'refund.succeeded') => $this->handleRefundSucceeded($payload),
+
+            // Session webhooks
+            str_contains($eventType, 'payment_session.completed') => $this->handleSessionCompleted($payload),
+            str_contains($eventType, 'payment_session.expired')   => $this->handleSessionExpired($payload),
 
             // Legacy webhooks (kept for backwards compatibility)
             str_contains($eventType, 'invoice.paid') => $this->handleInvoicePaid($payload),
@@ -257,6 +267,26 @@ class WebhookHandler
     protected function handleRefundSucceeded(array $payload): void
     {
         event(new RefundSucceeded($payload));
+    }
+
+    protected function handleSessionCompleted(array $payload): void
+    {
+        $session = XenditSession::referenceId(data_get($payload, 'data.reference_id'))->first();
+
+        if ($session) {
+            $session->markAsCompleted();
+            event(new SessionCompleted($session));
+        }
+    }
+
+    protected function handleSessionExpired(array $payload): void
+    {
+        $session = XenditSession::referenceId(data_get($payload, 'data.reference_id'))->first();
+
+        if ($session) {
+            $session->markAsExpired();
+            event(new SessionExpired($session));
+        }
     }
 
     /**
