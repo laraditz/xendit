@@ -25,6 +25,7 @@ class XenditSession extends Model
         'success_return_url', 'cancel_return_url',
         'payment_id', 'payment_token_id',
         'metadata', 'session_details',
+        'for_user_id', 'split_rule_id',
         'expires_at', 'completed_at', 'canceled_at',
     ];
 
@@ -92,5 +93,15 @@ class XenditSession extends Model
     public function scopePaymentSessionId($query, string $id)
     {
         return $query->where('payment_session_id', $id);
+    }
+
+    public function scopeForUserId($query, string $userId)
+    {
+        return $query->where('for_user_id', $userId);
+    }
+
+    public function scopeSplitRuleId($query, string $ruleId)
+    {
+        return $query->where('split_rule_id', $ruleId);
     }
 }

@@ -444,4 +444,47 @@ class SessionTest extends TestCase
 
         $this->assertInstanceOf(\Laraditz\Xendit\Builders\SessionBuilder::class, $builder);
     }
+
+    public function test_xendit_session_has_for_user_id_and_split_rule_id_columns(): void
+    {
+        $columns = \Illuminate\Support\Facades\Schema::getColumnListing('xendit_sessions');
+        $this->assertContains('for_user_id', $columns);
+        $this->assertContains('split_rule_id', $columns);
+    }
+
+    public function test_xendit_session_scope_for_user_id(): void
+    {
+        \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id' => 'scope-uid-1',
+            'for_user_id'  => 'user-abc',
+        ]);
+
+        \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id' => 'scope-uid-2',
+            'for_user_id'  => 'user-xyz',
+        ]);
+
+        $results = \Laraditz\Xendit\Models\XenditSession::forUserId('user-abc')->get();
+
+        $this->assertCount(1, $results);
+        $this->assertEquals('scope-uid-1', $results->first()->reference_id);
+    }
+
+    public function test_xendit_session_scope_split_rule_id(): void
+    {
+        \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id'  => 'scope-rule-1',
+            'split_rule_id' => 'rule-aaa',
+        ]);
+
+        \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id'  => 'scope-rule-2',
+            'split_rule_id' => 'rule-bbb',
+        ]);
+
+        $results = \Laraditz\Xendit\Models\XenditSession::splitRuleId('rule-aaa')->get();
+
+        $this->assertCount(1, $results);
+        $this->assertEquals('scope-rule-1', $results->first()->reference_id);
+    }
 }

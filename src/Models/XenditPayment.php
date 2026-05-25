@@ -37,6 +37,8 @@ class XenditPayment extends Model
         'failure_redirect_url',
         'metadata',
         'payment_details',
+        'for_user_id',
+        'split_rule_id',
         'paid_at',
         'expired_at',
     ];
@@ -113,6 +115,16 @@ class XenditPayment extends Model
     public function scopeXenditId($query, string $xenditId)
     {
         return $query->where('xendit_id', $xenditId);
+    }
+
+    public function scopeForUserId($query, string $userId)
+    {
+        return $query->where('for_user_id', $userId);
+    }
+
+    public function scopeSplitRuleId($query, string $ruleId)
+    {
+        return $query->where('split_rule_id', $ruleId);
     }
 
     /**
