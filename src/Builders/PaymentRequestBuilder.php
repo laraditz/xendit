@@ -46,6 +46,18 @@ class PaymentRequestBuilder extends BaseBuilder
         return $this;
     }
 
+    public function forUserId(string $userId): static
+    {
+        $this->attributes['for_user_id'] = $userId;
+        return $this->withHeader('for-user-id', $userId);
+    }
+
+    public function withSplitRule(string $ruleId): static
+    {
+        $this->attributes['split_rule_id'] = $ruleId;
+        return $this->withHeader('with-split-rule', $ruleId);
+    }
+
     public function payerReferenceId(string $payerReferenceId): static
     {
         $this->attributes['payer_id'] = $payerReferenceId;
@@ -264,7 +276,7 @@ class PaymentRequestBuilder extends BaseBuilder
 
         // Debug: Log the payload
         // \Log::info('Xendit Payment Request Payload:', $payload); 
-        $response = $this->service->create($payload);
+        $response = $this->service->create($payload, $this->headers);
 
         // Debug: Log the response
         // \Log::info('Xendit Payment Request Response:', $response);

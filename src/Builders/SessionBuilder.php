@@ -111,6 +111,18 @@ class SessionBuilder extends BaseBuilder
         return $this;
     }
 
+    public function forUserId(string $userId): static
+    {
+        $this->attributes['for_user_id'] = $userId;
+        return $this->withHeader('for-user-id', $userId);
+    }
+
+    public function withSplitRule(string $ruleId): static
+    {
+        $this->attributes['split_rule_id'] = $ruleId;
+        return $this->withHeader('with-split-rule', $ruleId);
+    }
+
     public function create(array $data = []): XenditSession
     {
         $mergeKeys = [
@@ -140,6 +152,8 @@ class SessionBuilder extends BaseBuilder
             'success_return_url' => $this->attributes['success_return_url'] ?? null,
             'cancel_return_url'  => $this->attributes['cancel_return_url'] ?? null,
             'metadata'           => $this->attributes['metadata'] ?? null,
+            'for_user_id'        => $this->attributes['for_user_id'] ?? null,
+            'split_rule_id'      => $this->attributes['split_rule_id'] ?? null,
             'payable_id'         => $this->payable?->getKey(),
             'payable_type'       => $this->payable ? get_class($this->payable) : null,
         ], fn($v) => !is_null($v)));
@@ -147,7 +161,7 @@ class SessionBuilder extends BaseBuilder
         $payload = $this->buildApiPayload();
 
         try {
-            $response = $this->service->create($payload);
+            $response = $this->service->create($payload, $this->headers);
         } catch (\Exception $e) {
             $session->forceDelete();
             throw $e;
@@ -172,12 +186,12 @@ class SessionBuilder extends BaseBuilder
 
     public function get(string $id): array
     {
-        return $this->service->get($id);
+        return $this->service->get($id, $this->headers);
     }
 
     public function cancel(string $id): array
     {
-        $response = $this->service->cancel($id);
+        $response = $this->service->cancel($id, $this->headers);
 
         $session = XenditSession::paymentSessionId($id)->first();
         if ($session) {

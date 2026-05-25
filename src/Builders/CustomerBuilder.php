@@ -117,7 +117,7 @@ class CustomerBuilder extends BaseBuilder
         $payload = $this->buildApiPayload($type);
 
         try {
-            $response = $this->service->create($payload);
+            $response = $this->service->create($payload, $this->headers);
         } catch (\Exception $e) {
             $customer->forceDelete();
             throw $e;
@@ -145,17 +145,17 @@ class CustomerBuilder extends BaseBuilder
 
     public function get(string $id): array
     {
-        return $this->service->get($id);
+        return $this->service->get($id, $this->headers);
     }
 
     public function list(string $referenceId): array
     {
-        return $this->service->list($referenceId);
+        return $this->service->list($referenceId, $this->headers);
     }
 
     public function update(string $id, array $data): array
     {
-        return $this->service->update($id, $data);
+        return $this->service->update($id, $data, $this->headers);
     }
 
     protected function buildApiPayload(string $type): array
