@@ -2,7 +2,19 @@
 
 namespace Laraditz\Xendit;
 
+use Illuminate\Support\Str;
 use Illuminate\Support\ServiceProvider;
+use Laraditz\Xendit\Client\XenditClient;
+use Laraditz\Xendit\Models\XenditCustomer;
+use Laraditz\Xendit\Models\XenditPayment;
+use Laraditz\Xendit\Models\XenditSession;
+use Laraditz\Xendit\Models\XenditWebhookLog;
+use Laraditz\Xendit\Models\XenditTransaction;
+use Laraditz\Xendit\Observers\XenditCustomerObserver;
+use Laraditz\Xendit\Observers\XenditPaymentObserver;
+use Laraditz\Xendit\Observers\XenditSessionObserver;
+use Laraditz\Xendit\Observers\XenditWebhookLogObserver;
+use Laraditz\Xendit\Observers\XenditTransactionObserver;
 
 class XenditServiceProvider extends ServiceProvider
 {
@@ -11,36 +23,51 @@ class XenditServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        /*
-         * Optional methods to load your package assets
-         */
-        // $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'xendit');
-        // $this->loadViewsFrom(__DIR__.'/../resources/views', 'xendit');
-        // $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        // $this->loadRoutesFrom(__DIR__.'/routes.php');
+        // Load routes
+        $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
+
+        // Register observers
+        XenditCustomer::observe(XenditCustomerObserver::class);
+        XenditSession::observe(XenditSessionObserver::class);
+        XenditPayment::observe(XenditPaymentObserver::class);
+        XenditTransaction::observe(XenditTransactionObserver::class);
+        XenditWebhookLog::observe(XenditWebhookLogObserver::class);
 
         if ($this->app->runningInConsole()) {
+            // Publish configuration
             $this->publishes([
-                __DIR__.'/../config/config.php' => config_path('xendit.php'),
-            ], 'config');
+                __DIR__ . '/../config/config.php' => config_path('xendit.php'),
+            ], 'xendit-config');
 
-            // Publishing the views.
-            /*$this->publishes([
-                __DIR__.'/../resources/views' => resource_path('views/vendor/xendit'),
-            ], 'views');*/
+            // Publish migrations
+            $this->publishMigrations();
+        }
+    }
 
-            // Publishing assets.
-            /*$this->publishes([
-                __DIR__.'/../resources/assets' => public_path('vendor/xendit'),
-            ], 'assets');*/
+    protected function publishMigrations()
+    {
+        $databasePath = __DIR__ . '/../database/migrations/';
+        $migrationPath = database_path('migrations/');
 
-            // Publishing the translation files.
-            /*$this->publishes([
-                __DIR__.'/../resources/lang' => resource_path('lang/vendor/xendit'),
-            ], 'lang');*/
+        $files = array_diff(scandir($databasePath), array('.', '..'));
+        $date = date('Y_m_d');
+        $time = date('His');
 
-            // Registering package commands.
-            // $this->commands([]);
+        $migrationFiles = collect($files)
+            ->mapWithKeys(function (string $file) use ($databasePath, $migrationPath, $date, &$time) {
+                $filename = Str::replace(Str::substr($file, 0, 17), '', $file);
+
+                $found = glob($migrationPath . '*' . $filename);
+                $time = date("His", strtotime($time) + 1); // ensure in order
+    
+                return !!count($found) === true ? []
+                    : [
+                        $databasePath . $file => $migrationPath . $date . '_' . $time . $filename,
+                    ];
+            });
+
+        if ($migrationFiles->isNotEmpty()) {
+            $this->publishes($migrationFiles->toArray(), 'xendit-migrations');
         }
     }
 
@@ -50,11 +77,16 @@ class XenditServiceProvider extends ServiceProvider
     public function register()
     {
         // Automatically apply the package configuration
-        $this->mergeConfigFrom(__DIR__.'/../config/config.php', 'xendit');
+        $this->mergeConfigFrom(__DIR__ . '/../config/config.php', 'xendit');
+
+        // Register XenditClient as singleton
+        $this->app->singleton(XenditClient::class, function () {
+            return new XenditClient();
+        });
 
         // Register the main class to use with the facade
-        $this->app->singleton('xendit', function () {
-            return new Xendit;
+        $this->app->singleton('xendit', function ($app) {
+            return new Xendit($app->make(XenditClient::class));
         });
     }
 }
