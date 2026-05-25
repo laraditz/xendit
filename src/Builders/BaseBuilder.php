@@ -8,7 +8,20 @@ use Illuminate\Support\Str;
 abstract class BaseBuilder
 {
     protected array $attributes = [];
+    protected array $headers = [];
     protected ?Model $payable = null;
+
+    public function withHeader(string $key, string $value): static
+    {
+        $this->headers[$key] = $value;
+        return $this;
+    }
+
+    public function withHeaders(array $headers): static
+    {
+        $this->headers = array_merge($this->headers, $headers);
+        return $this;
+    }
 
     /**
      * Set the amount for payment
