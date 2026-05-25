@@ -10,6 +10,8 @@ class TestCase extends BaseTestCase
 {
     use RefreshDatabase;
 
+    public static $latestResponse;
+
     protected function getPackageProviders($app): array
     {
         return [XenditServiceProvider::class];
@@ -26,6 +28,6 @@ class TestCase extends BaseTestCase
 
     protected function defineDatabaseMigrations(): void
     {
-        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
     }
 }
