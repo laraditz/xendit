@@ -13,9 +13,13 @@ class XenditClient implements ClientInterface
     use HandlesErrors;
     use MakesHttpRequests;
 
-    public function get(string $endpoint, array $query = []): array
+    public function get(string $endpoint, array $query = [], array $headers = []): array
     {
-        $response = $this->buildClient()->get($endpoint, $query);
+        $client = empty($headers)
+            ? $this->buildClient()
+            : $this->buildClient()->withHeaders($headers);
+
+        $response = $client->get($endpoint, $query);
 
         return $this->handleResponse($response);
     }
@@ -31,23 +35,35 @@ class XenditClient implements ClientInterface
         return $this->handleResponse($response);
     }
 
-    public function put(string $endpoint, array $data = []): array
+    public function put(string $endpoint, array $data = [], array $headers = []): array
     {
-        $response = $this->buildClient()->put($endpoint, $data);
+        $client = empty($headers)
+            ? $this->buildClient()
+            : $this->buildClient()->withHeaders($headers);
+
+        $response = $client->put($endpoint, $data);
 
         return $this->handleResponse($response);
     }
 
-    public function patch(string $endpoint, array $data = []): array
+    public function patch(string $endpoint, array $data = [], array $headers = []): array
     {
-        $response = $this->buildClient()->patch($endpoint, $data);
+        $client = empty($headers)
+            ? $this->buildClient()
+            : $this->buildClient()->withHeaders($headers);
+
+        $response = $client->patch($endpoint, $data);
 
         return $this->handleResponse($response);
     }
 
-    public function delete(string $endpoint): array
+    public function delete(string $endpoint, array $headers = []): array
     {
-        $response = $this->buildClient()->delete($endpoint);
+        $client = empty($headers)
+            ? $this->buildClient()
+            : $this->buildClient()->withHeaders($headers);
+
+        $response = $client->delete($endpoint);
 
         return $this->handleResponse($response);
     }
