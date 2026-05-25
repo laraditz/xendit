@@ -13,13 +13,13 @@ jobs:
         steps:
             - uses: actions/checkout@v4
               with:
-                  ref: master
+                  ref: main
 
             - name: Extract changelog notes
               id: notes
               run: |
                   VERSION="${GITHUB_REF_NAME}"
-                  NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+                  NOTES=$(awk "/^## ${VERSION}/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md)
                   echo "notes<<EOF" >> "$GITHUB_OUTPUT"
                   echo "$NOTES" >> "$GITHUB_OUTPUT"
                   echo "EOF" >> "$GITHUB_OUTPUT"

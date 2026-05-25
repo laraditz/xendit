@@ -2,6 +2,20 @@
 
 All notable changes to `xendit` will be documented in this file
 
+## 1.0.1 - 2026-05-25
+
+### Fixed
+
+- Release workflow (`create-release.yml`): changed `ref: master` to `ref: main` to match the repository's default branch
+- Release workflow (`create-release.yml`): fixed awk pattern from `## \[VERSION\]` to `## VERSION` to correctly extract changelog notes matching the `## x.y.z - YYYY-MM-DD` format
+- `PaymentRequestBuilder`: fixed undefined array key `payer_id` in `buildApiPayload()` when no payer information is set
+
+### Changed
+
+- Test infrastructure: added `$latestResponse` property to `TestCase` for easier response inspection in tests
+
+---
+
 ## 1.0.0 - 2026-05-25
 
 ### Added
