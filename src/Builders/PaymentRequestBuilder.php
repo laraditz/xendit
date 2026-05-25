@@ -380,7 +380,7 @@ class PaymentRequestBuilder extends BaseBuilder
             $payload['customer']['type'] = "INDIVIDUAL";
         }
 
-        if ($this->attributes['payer_id'] && isset($payload['customer'])) {
+        if (!empty($this->attributes['payer_id']) && isset($payload['customer'])) {
             $payload['customer']['reference_id'] = $this->attributes['payer_id'];
         }
 
