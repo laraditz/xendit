@@ -266,6 +266,38 @@ Set channel-specific properties.
 ])
 ```
 
+#### `forUserId(string $userId)`
+Set the `for-user-id` request header **and** persist the value to `xendit_payments.for_user_id`.
+
+```php
+->forUserId('sub-account-user-id')
+```
+
+#### `withSplitRule(string $ruleId)`
+Set the `with-split-rule` request header **and** persist the value to `xendit_payments.split_rule_id`.
+
+```php
+->withSplitRule('split-rule-id')
+```
+
+#### `withHeader(string $key, string $value)`
+Set an arbitrary HTTP request header.
+
+```php
+->withHeader('api-version', '2024-11-11')
+->withHeader('idempotency-key', 'my-key')
+```
+
+#### `withHeaders(array $headers)`
+Set multiple HTTP request headers at once. Merges with any previously set headers.
+
+```php
+->withHeaders([
+    'api-version'     => '2024-11-11',
+    'idempotency-key' => 'my-key',
+])
+```
+
 ## Complete Examples
 
 ### Example 1: Simple ShopeePay Payment
@@ -342,7 +374,28 @@ $payment = Xendit::paymentRequest()->create([
 ]);
 ```
 
-### Example 5: QR Code Payment
+### Example 5: Sub-account Payment with Split Rule
+
+Route a payment through a Xendit sub-account and apply a revenue split. The values are sent as request headers and saved to `xendit_payments.for_user_id` / `xendit_payments.split_rule_id` for auditing:
+
+```php
+$payment = Xendit::paymentRequest()
+    ->forUserId('sub-account-user-id')   // 'for-user-id' header + DB column
+    ->withSplitRule('split-rule-id')      // 'with-split-rule' header + DB column
+    ->amount(100000)
+    ->currency('MYR')
+    ->ewallets('SHOPEEPAY')
+    ->successUrl('https://yourapp.com/success')
+    ->create();
+
+// Query payments for a specific sub-account
+$subAccountPayments = XenditPayment::forUserId('sub-account-user-id')->get();
+
+// Query payments for a specific split rule
+$splitPayments = XenditPayment::splitRuleId('split-rule-id')->get();
+```
+
+### Example 6: QR Code Payment
 
 ```php
 $payment = Xendit::paymentRequest()
@@ -376,6 +429,8 @@ $payment->amount                // Payment amount
 $payment->currency              // Currency code
 $payment->status                // Payment status (enum)
 $payment->payment_details       // Complete Xendit response
+$payment->for_user_id           // Sub-account user ID (if set via forUserId())
+$payment->split_rule_id         // Split rule ID (if set via withSplitRule())
 $payment->payable               // Related model (if attached)
 $payment->created_at            // Creation timestamp
 ```

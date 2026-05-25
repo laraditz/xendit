@@ -55,6 +55,8 @@ $customer->type->label(); // 'Individual' or 'Business'
 | `phoneNumber(string)` | Phone number |
 | `address(array)` | Append one address to the addresses list |
 | `metadata(array)` | Custom key-value metadata |
+| `withHeader(string, string)` | Set a single arbitrary request header |
+| `withHeaders(array)` | Merge multiple request headers at once |
 
 ## `create(): XenditCustomer`
 
@@ -149,6 +151,26 @@ $updated = Xendit::customer()->update('cust_abc123', [
     'email'         => 'newemail@example.com',
     'mobile_number' => '+60199999999',
 ]);
+```
+
+## Custom Headers
+
+All four operations (`create`, `get`, `list`, `update`) pass any headers set on the builder through to the API call.
+
+`create()` automatically sends an `idempotency-key` header derived from the customer's `reference_id`. You can override it:
+
+```php
+// Override the auto-generated idempotency key
+Xendit::customer()
+    ->withHeader('idempotency-key', 'my-explicit-key')
+    ->referenceId('user-001')
+    ->givenNames('John')
+    ->create();
+
+// Route list/get through a sub-account
+Xendit::customer()
+    ->withHeader('for-user-id', 'sub-account-user-id')
+    ->list('user-001');
 ```
 
 ## Model Queries

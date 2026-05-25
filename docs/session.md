@@ -21,6 +21,8 @@ The Session API creates a hosted payment page (Payment Link) or embeddable compo
 | `currency` | char(3) | Currency code (defaults to config `xendit.default_currency`) |
 | `payment_link_url` | text | Redirect URL for `PAYMENT_LINK` mode |
 | `components_sdk_key` | text | SDK key for `COMPONENTS` mode |
+| `for_user_id` | string | Sub-account user ID (set via `forUserId()`) |
+| `split_rule_id` | string | Split rule ID (set via `withSplitRule()`) |
 | `expires_at` | datetime | Session expiry |
 | `completed_at` | datetime | Set when session completes |
 | `canceled_at` | datetime | Set when session is canceled |
@@ -62,6 +64,10 @@ $session->status->label();    // 'Active', 'Completed', etc.
 | `expiresAt(Carbon)` | Custom expiry datetime |
 | `metadata(array)` | Custom key-value metadata |
 | `for(Model)` | Attach session to any Eloquent model (polymorphic) |
+| `forUserId(string)` | Set `for-user-id` header **and** persist to `xendit_sessions.for_user_id` |
+| `withSplitRule(string)` | Set `with-split-rule` header **and** persist to `xendit_sessions.split_rule_id` |
+| `withHeader(string, string)` | Set a single arbitrary request header |
+| `withHeaders(array)` | Merge multiple request headers at once |
 
 ## `create(): XenditSession`
 
@@ -144,6 +150,55 @@ $session = Xendit::session()
 $session->payable; // returns the Order model
 ```
 
+### Sub-accounts and split rules
+
+Use `forUserId()` and `withSplitRule()` to route payments through Xendit sub-accounts or apply a split rule. The values are sent as request headers **and** saved to the database for later filtering and auditing:
+
+```php
+$session = Xendit::session()
+    ->forUserId('sub-account-user-id')   // → 'for-user-id' header + DB column
+    ->withSplitRule('split-rule-id')      // → 'with-split-rule' header + DB column
+    ->amount(100.00)
+    ->sessionType('PAY')
+    ->mode('PAYMENT_LINK')
+    ->create();
+
+echo $session->for_user_id;  // 'sub-account-user-id'
+echo $session->split_rule_id; // 'split-rule-id'
+```
+
+### Custom request headers
+
+Any arbitrary header can be set generically on all three operations:
+
+```php
+// On create
+Xendit::session()
+    ->withHeader('api-version', '2024-11-11')
+    ->amount(100.00)
+    ->sessionType('PAY')
+    ->mode('PAYMENT_LINK')
+    ->create();
+
+// On get
+Xendit::session()
+    ->withHeader('for-user-id', 'uid')
+    ->get('ps-abc123');
+
+// On cancel
+Xendit::session()
+    ->withHeader('for-user-id', 'uid')
+    ->cancel('ps-abc123');
+
+// Multiple headers at once
+Xendit::session()
+    ->withHeaders([
+        'api-version'     => '2024-11-11',
+        'idempotency-key' => 'my-key',
+    ])
+    ->create();
+```
+
 ### Custom expiry
 
 ```php
@@ -201,6 +256,8 @@ $session->payable;        // Polymorphic: your Order, User, etc.
 // Scopes
 XenditSession::referenceId('order-001')->first();
 XenditSession::paymentSessionId('ps-abc123')->first();
+XenditSession::forUserId('sub-account-user-id')->get();
+XenditSession::splitRuleId('split-rule-id')->get();
 ```
 
 ## Events

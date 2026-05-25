@@ -21,6 +21,7 @@ A Laravel package for seamless integration with Xendit payment gateway. Built fr
 - 🔗 Payment links generation
 - 📊 Transaction querying and listing
 - 🎫 Session management
+- 🏷️ Custom HTTP headers on any API call (`for-user-id`, `with-split-rule`, etc.)
 
 ## API Coverage
 
@@ -332,6 +333,55 @@ $transactions = Xendit::transaction()->list([
     'limit' => 20,
     'after_id' => 'txn_123',
 ]);
+```
+
+### Custom HTTP Headers (Sub-accounts & Split Rules)
+
+Any builder supports arbitrary request headers via `withHeader()` / `withHeaders()`:
+
+```php
+// Single header
+Xendit::session()
+    ->withHeader('api-version', '2024-11-11')
+    ->amount(100.00)
+    ->sessionType('PAY')
+    ->mode('PAYMENT_LINK')
+    ->create();
+
+// Multiple headers at once
+Xendit::session()
+    ->withHeaders(['api-version' => '2024-11-11', 'idempotency-key' => 'abc'])
+    ->create();
+
+// Works on get() and cancel() too
+Xendit::session()->withHeader('for-user-id', 'sub-account-id')->get('ps-abc123');
+```
+
+`SessionBuilder` and `PaymentRequestBuilder` also expose named shortcuts that set the header **and** persist the value to the database for filtering and auditing:
+
+```php
+// Session — for-user-id header + xendit_sessions.for_user_id column
+$session = Xendit::session()
+    ->forUserId('sub-account-user-id')   // sets 'for-user-id' header
+    ->withSplitRule('split-rule-id')      // sets 'with-split-rule' header
+    ->amount(100.00)
+    ->sessionType('PAY')
+    ->mode('PAYMENT_LINK')
+    ->create();
+
+// Payment Request — same pattern → xendit_payments.for_user_id / split_rule_id
+$payment = Xendit::paymentRequest()
+    ->forUserId('sub-account-user-id')
+    ->withSplitRule('split-rule-id')
+    ->amount(100.00)
+    ->ewallets('SHOPEEPAY')
+    ->create();
+
+// Query by sub-account or split rule
+XenditSession::forUserId('sub-account-user-id')->get();
+XenditPayment::forUserId('sub-account-user-id')->get();
+XenditSession::splitRuleId('split-rule-id')->get();
+XenditPayment::splitRuleId('split-rule-id')->get();
 ```
 
 ### Querying Payments
