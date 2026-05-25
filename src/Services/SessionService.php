@@ -13,30 +13,18 @@ class SessionService
         $this->client = $client;
     }
 
-    /**
-     * Create a session
-     * https://docs.xendit.co/apidocs/create-session
-     */
-    public function create(array $data): array
+    public function create(array $data, array $headers = []): array
     {
-        return $this->client->post('/sessions', $data);
+        return $this->client->post('/sessions', $data, $headers);
     }
 
-    /**
-     * Get the status of a session
-     * https://docs.xendit.co/apidocs/get-session
-     */
-    public function get(string $id): array
+    public function get(string $id, array $headers = []): array
     {
-        return $this->client->get("/sessions/{$id}");
+        return $this->client->get("/sessions/{$id}", [], $headers);
     }
 
-    /**
-     * Cancel a session
-     * https://docs.xendit.co/apidocs/cancel-session
-     */
-    public function cancel(string $id): array
+    public function cancel(string $id, array $headers = []): array
     {
-        return $this->client->post("/sessions/{$id}/cancel");
+        return $this->client->post("/sessions/{$id}/cancel", [], $headers);
     }
 }

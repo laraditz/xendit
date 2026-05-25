@@ -13,21 +13,13 @@ class TransactionService
         $this->client = $client;
     }
 
-    /**
-     * Get transaction by ID
-     * https://docs.xendit.co/apidocs/get-transaction
-     */
-    public function get(string $id): array
+    public function get(string $id, array $headers = []): array
     {
-        return $this->client->get("/transactions/{$id}");
+        return $this->client->get("/transactions/{$id}", [], $headers);
     }
 
-    /**
-     * List transactions
-     * https://docs.xendit.co/apidocs/list-transactions
-     */
-    public function list(array $params = []): array
+    public function list(array $params = [], array $headers = []): array
     {
-        return $this->client->get('/transactions', $params);
+        return $this->client->get('/transactions', $params, $headers);
     }
 }

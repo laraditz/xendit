@@ -13,20 +13,13 @@ class PaymentLinkService
         $this->client = $client;
     }
 
-    /**
-     * Create a payment link
-     * https://docs.xendit.co/apidocs/payment-link
-     */
-    public function create(array $data): array
+    public function create(array $data, array $headers = []): array
     {
-        return $this->client->post('/payment_links', $data);
+        return $this->client->post('/payment_links', $data, $headers);
     }
 
-    /**
-     * Get payment link by ID
-     */
-    public function get(string $id): array
+    public function get(string $id, array $headers = []): array
     {
-        return $this->client->get("/payment_links/{$id}");
+        return $this->client->get("/payment_links/{$id}", [], $headers);
     }
 }

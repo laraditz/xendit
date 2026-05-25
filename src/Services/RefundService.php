@@ -13,12 +13,8 @@ class RefundService
         $this->client = $client;
     }
 
-    /**
-     * Refund a payment request
-     * https://docs.xendit.co/apidocs/refund-payment-request
-     */
-    public function create(array $data): array
+    public function create(array $data, array $headers = []): array
     {
-        return $this->client->post('/refunds', $data);
+        return $this->client->post('/refunds', $data, $headers);
     }
 }

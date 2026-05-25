@@ -10,25 +10,25 @@ class CustomerService
         protected XenditClient $client,
     ) {}
 
-    public function create(array $data): array
+    public function create(array $data, array $headers = []): array
     {
-        return $this->client->post('/customers', $data, [
-            'idempotency-key' => $data['reference_id'],
-        ]);
+        $merged = array_merge(['idempotency-key' => $data['reference_id']], $headers);
+
+        return $this->client->post('/customers', $data, $merged);
     }
 
-    public function get(string $id): array
+    public function get(string $id, array $headers = []): array
     {
-        return $this->client->get("/customers/{$id}");
+        return $this->client->get("/customers/{$id}", [], $headers);
     }
 
-    public function list(string $referenceId): array
+    public function list(string $referenceId, array $headers = []): array
     {
-        return $this->client->get('/customers', ['reference_id' => $referenceId]);
+        return $this->client->get('/customers', ['reference_id' => $referenceId], $headers);
     }
 
-    public function update(string $id, array $data): array
+    public function update(string $id, array $data, array $headers = []): array
     {
-        return $this->client->patch("/customers/{$id}", $data);
+        return $this->client->patch("/customers/{$id}", $data, $headers);
     }
 }

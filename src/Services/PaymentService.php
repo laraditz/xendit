@@ -13,30 +13,18 @@ class PaymentService
         $this->client = $client;
     }
 
-    /**
-     * Get the status of a payment
-     * https://docs.xendit.co/apidocs/get-payment
-     */
-    public function get(string $id): array
+    public function get(string $id, array $headers = []): array
     {
-        return $this->client->get("/payments/{$id}");
+        return $this->client->get("/payments/{$id}", [], $headers);
     }
 
-    /**
-     * Cancel a payment
-     * https://docs.xendit.co/apidocs/cancel-payment
-     */
-    public function cancel(string $id): array
+    public function cancel(string $id, array $headers = []): array
     {
-        return $this->client->post("/payments/{$id}/cancel");
+        return $this->client->post("/payments/{$id}/cancel", [], $headers);
     }
 
-    /**
-     * Capture a payment
-     * https://docs.xendit.co/apidocs/capture-payment
-     */
-    public function capture(string $id, array $data = []): array
+    public function capture(string $id, array $data = [], array $headers = []): array
     {
-        return $this->client->post("/payments/{$id}/capture", $data);
+        return $this->client->post("/payments/{$id}/capture", $data, $headers);
     }
 }

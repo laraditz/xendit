@@ -13,30 +13,18 @@ class PaymentTokenService
         $this->client = $client;
     }
 
-    /**
-     * Create a new payment token
-     * https://docs.xendit.co/apidocs/create-payment-token
-     */
-    public function create(array $data): array
+    public function create(array $data, array $headers = []): array
     {
-        return $this->client->post('/payment_tokens', $data);
+        return $this->client->post('/payment_tokens', $data, $headers);
     }
 
-    /**
-     * Get the status of a payment token
-     * https://docs.xendit.co/apidocs/get-payment-token
-     */
-    public function get(string $id): array
+    public function get(string $id, array $headers = []): array
     {
-        return $this->client->get("/payment_tokens/{$id}");
+        return $this->client->get("/payment_tokens/{$id}", [], $headers);
     }
 
-    /**
-     * Cancel and deactivate a payment token
-     * https://docs.xendit.co/apidocs/cancel-payment-token
-     */
-    public function cancel(string $id): array
+    public function cancel(string $id, array $headers = []): array
     {
-        return $this->client->post("/payment_tokens/{$id}/deactivate");
+        return $this->client->post("/payment_tokens/{$id}/deactivate", [], $headers);
     }
 }

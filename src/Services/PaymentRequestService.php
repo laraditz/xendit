@@ -13,39 +13,23 @@ class PaymentRequestService
         $this->client = $client;
     }
 
-    /**
-     * Create a payment request (v3 API)
-     * https://docs.xendit.co/apidocs/create-payment-request
-     */
-    public function create(array $data): array
+    public function create(array $data, array $headers = []): array
     {
-        return $this->client->post('/v3/payment_requests', $data);
+        return $this->client->post('/v3/payment_requests', $data, $headers);
     }
 
-    /**
-     * Get the status of a payment request (v3 API)
-     * https://docs.xendit.co/apidocs/get-payment-request
-     */
-    public function get(string $id): array
+    public function get(string $id, array $headers = []): array
     {
-        return $this->client->get("/v3/payment_requests/{$id}");
+        return $this->client->get("/v3/payment_requests/{$id}", [], $headers);
     }
 
-    /**
-     * Cancel a payment request (v3 API)
-     * https://docs.xendit.co/apidocs/cancel-payment-request
-     */
-    public function cancel(string $id): array
+    public function cancel(string $id, array $headers = []): array
     {
-        return $this->client->post("/v3/payment_requests/{$id}/cancel");
+        return $this->client->post("/v3/payment_requests/{$id}/cancel", [], $headers);
     }
 
-    /**
-     * Simulate payment (test mode only, v3 API)
-     * https://docs.xendit.co/apidocs/simulate-payment-test-mode
-     */
-    public function simulate(string $id, array $data = []): array
+    public function simulate(string $id, array $data = [], array $headers = []): array
     {
-        return $this->client->post("/v3/payment_requests/{$id}/payments/simulate", $data);
+        return $this->client->post("/v3/payment_requests/{$id}/payments/simulate", $data, $headers);
     }
 }
