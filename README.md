@@ -335,23 +335,47 @@ $transactions = Xendit::transaction()->list([
 ]);
 ```
 
+### Per-Service API Versions
+
+By default no `api-version` header is sent. You can configure per-service defaults in `config/xendit.php`, override them per call, or suppress them entirely:
+
+```php
+// config/xendit.php — configure per-service defaults (all optional)
+'api_versions' => [
+    'payment_request' => '2024-11-11',
+    'session'         => '2024-05-01',
+    // any service key set to null suppresses the header even if the service has a default
+    // 'payment' => null,
+],
+```
+
+```php
+// Per-call override — takes precedence over config
+Xendit::session()
+    ->withApiVersion('2024-05-01')
+    ->amount(100.00)
+    ->sessionType('PAY')
+    ->mode('PAYMENT_LINK')
+    ->create();
+
+// Suppress for this call only
+Xendit::session()
+    ->withoutApiVersion()
+    ->get('ps-abc123');
+```
+
+Available config keys: `payment_request`, `payment`, `payment_token`, `session`, `customer`, `refund`, `payment_link`, `transaction`.
+
 ### Custom HTTP Headers (Sub-accounts & Split Rules)
 
 Any builder supports arbitrary request headers via `withHeader()` / `withHeaders()`:
 
 ```php
 // Single header
-Xendit::session()
-    ->withHeader('api-version', '2024-11-11')
-    ->amount(100.00)
-    ->sessionType('PAY')
-    ->mode('PAYMENT_LINK')
-    ->create();
+Xendit::session()->withHeader('idempotency-key', 'abc')->create();
 
 // Multiple headers at once
-Xendit::session()
-    ->withHeaders(['api-version' => '2024-11-11', 'idempotency-key' => 'abc'])
-    ->create();
+Xendit::session()->withHeaders(['idempotency-key' => 'abc'])->create();
 
 // Works on get() and cancel() too
 Xendit::session()->withHeader('for-user-id', 'sub-account-id')->get('ps-abc123');

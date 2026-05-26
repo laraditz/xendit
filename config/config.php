@@ -35,13 +35,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | API Version
+    | API Versions
     |--------------------------------------------------------------------------
     |
-    | The Xendit API version to use. Required for v3 endpoints.
+    | Per-service API version headers. Add a key for any service that requires
+    | a specific api-version header. Omit the key to send no header (the default).
+    | Set a key to null to suppress the header even if the service has a default.
+    |
+    | Available keys: payment_request, payment, payment_token, session, customer,
+    |                 refund, payment_link, transaction
     |
     */
-    'api_version' => env('XENDIT_API_VERSION', '2024-11-11'),
+    'api_versions' => [
+        // 'payment_request' => '2024-11-11',
+        // 'session'         => '2024-05-01',
+        //
+        // To suppress the header for a service that has a $defaultApiVersion,
+        // the key must be PRESENT with value null — commenting the line out does
+        // NOT suppress; it falls through to the service default.
+        // 'payment' => null,
+    ],
 
     /*
     |--------------------------------------------------------------------------

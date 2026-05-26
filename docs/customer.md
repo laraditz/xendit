@@ -55,7 +55,9 @@ $customer->type->label(); // 'Individual' or 'Business'
 | `phoneNumber(string)` | Phone number |
 | `address(array)` | Append one address to the addresses list |
 | `metadata(array)` | Custom key-value metadata |
-| `withHeader(string, string)` | Set a single arbitrary request header |
+| `withApiVersion(?string)` | Set the `api-version` header; `null` suppresses it |
+| `withoutApiVersion()` | Suppress the `api-version` header for this call |
+| `withHeader(string, string\|null)` | Set a single arbitrary request header |
 | `withHeaders(array)` | Merge multiple request headers at once |
 
 ## `create(): XenditCustomer`

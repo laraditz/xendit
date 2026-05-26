@@ -11,7 +11,7 @@ abstract class BaseBuilder
     protected array $headers = [];
     protected ?Model $payable = null;
 
-    public function withHeader(string $key, string $value): static
+    public function withHeader(string $key, string|null $value): static
     {
         $this->headers[$key] = $value;
         return $this;
@@ -21,6 +21,17 @@ abstract class BaseBuilder
     {
         $this->headers = array_merge($this->headers, $headers);
         return $this;
+    }
+
+    public function withApiVersion(?string $version): static
+    {
+        $this->headers['api-version'] = $version;
+        return $this;
+    }
+
+    public function withoutApiVersion(): static
+    {
+        return $this->withApiVersion(null);
     }
 
     /**

@@ -15,55 +15,35 @@ class XenditClient implements ClientInterface
 
     public function get(string $endpoint, array $query = [], array $headers = []): array
     {
-        $client = empty($headers)
-            ? $this->buildClient()
-            : $this->buildClient()->withHeaders($headers);
-
-        $response = $client->get($endpoint, $query);
+        $response = $this->buildClient()->withHeaders($headers)->get($endpoint, $query);
 
         return $this->handleResponse($response);
     }
 
     public function post(string $endpoint, array $data = [], array $headers = []): array
     {
-        $client = empty($headers)
-            ? $this->buildClient()
-            : $this->buildClient()->withHeaders($headers);
-
-        $response = $client->post($endpoint, $data);
+        $response = $this->buildClient()->withHeaders($headers)->post($endpoint, $data);
 
         return $this->handleResponse($response);
     }
 
     public function put(string $endpoint, array $data = [], array $headers = []): array
     {
-        $client = empty($headers)
-            ? $this->buildClient()
-            : $this->buildClient()->withHeaders($headers);
-
-        $response = $client->put($endpoint, $data);
+        $response = $this->buildClient()->withHeaders($headers)->put($endpoint, $data);
 
         return $this->handleResponse($response);
     }
 
     public function patch(string $endpoint, array $data = [], array $headers = []): array
     {
-        $client = empty($headers)
-            ? $this->buildClient()
-            : $this->buildClient()->withHeaders($headers);
-
-        $response = $client->patch($endpoint, $data);
+        $response = $this->buildClient()->withHeaders($headers)->patch($endpoint, $data);
 
         return $this->handleResponse($response);
     }
 
     public function delete(string $endpoint, array $headers = []): array
     {
-        $client = empty($headers)
-            ? $this->buildClient()
-            : $this->buildClient()->withHeaders($headers);
-
-        $response = $client->delete($endpoint);
+        $response = $this->buildClient()->withHeaders($headers)->delete($endpoint);
 
         return $this->handleResponse($response);
     }

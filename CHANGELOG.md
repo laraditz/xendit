@@ -2,6 +2,25 @@
 
 All notable changes to `xendit` will be documented in this file
 
+## 1.0.2 - 2026-05-26
+
+### Added
+
+- `HasApiVersion` trait (`src/Client/Concerns/HasApiVersion.php`) — per-service `api-version` header resolution with a three-level priority chain: caller override → per-service config key → service `$defaultApiVersion` property → omit header. Uses `array_key_exists` throughout so an explicit `null` acts as a suppress signal distinct from "not set"
+- `BaseBuilder::withApiVersion(?string $version)` — set or override the `api-version` header for a single request; `null` suppresses it
+- `BaseBuilder::withoutApiVersion()` — sugar for `withApiVersion(null)`; suppresses the header even when a config default or service default would otherwise send it
+
+### Changed
+
+- **Breaking:** `config/xendit.php` — the single `api_version` key is replaced by an `api_versions` map. Applications that previously set `api_version` in their published config must re-publish (`php artisan vendor:publish --tag=xendit-config`) and migrate to the new map. No automatic fallback is provided
+- `api-version` header is no longer sent on every request by default. It is only injected when explicitly configured via `config('xendit.api_versions.{service}')`, a service's `$defaultApiVersion` property, or a per-call `withApiVersion()` call
+- `MakesHttpRequests::buildClient()` — removed global `api-version` injection; `buildClient()` now sets only `Authorization`, `Content-Type`, and `Accept`
+- `XenditClient` — removed `empty($headers)` conditional branch; all five HTTP methods now unconditionally call `->withHeaders($headers)` (passing an empty array to Laravel's HTTP client is harmless and removes a confusing branch)
+- `BaseBuilder::withHeader()` — signature widened from `string $value` to `string|null $value` so `null` can be passed as an explicit suppress marker
+- All 8 services (`SessionService`, `PaymentRequestService`, `CustomerService`, `PaymentService`, `PaymentTokenService`, `RefundService`, `PaymentLinkService`, `TransactionService`) — now use `HasApiVersion` trait and call `resolveHeaders()` before forwarding headers to `XenditClient`
+
+---
+
 ## 1.0.1 - 2026-05-25
 
 ### Fixed
