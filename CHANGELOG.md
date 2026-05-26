@@ -2,6 +2,14 @@
 
 All notable changes to `xendit` will be documented in this file
 
+## 1.0.3 - 2026-05-26
+
+### Changed
+
+- `config/xendit.php` — populated `api_versions` map with known Xendit API version values based on official documentation: `payment_request => 2024-11-11`, `payment => 2024-11-11`, `payment_token => 2024-11-11`, `customer => 2020-10-31`. Session has no default set as the required version varies by region/account type.
+
+---
+
 ## 1.0.2 - 2026-05-26
 
 ### Added
