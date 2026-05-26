@@ -23,7 +23,6 @@ class TestCase extends BaseTestCase
         $app['config']->set('xendit.api_key', 'test_secret_key');
         $app['config']->set('xendit.base_url', 'https://api.xendit.co');
         $app['config']->set('xendit.default_currency', 'MYR');
-        $app['config']->set('xendit.api_version', '2024-11-11');
     }
 
     protected function defineDatabaseMigrations(): void
