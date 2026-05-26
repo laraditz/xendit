@@ -280,11 +280,25 @@ Set the `with-split-rule` request header **and** persist the value to `xendit_pa
 ->withSplitRule('split-rule-id')
 ```
 
-#### `withHeader(string $key, string $value)`
-Set an arbitrary HTTP request header.
+#### `withApiVersion(?string $version)`
+Set the `api-version` request header for this call. Pass `null` to suppress the header even if a default is configured.
 
 ```php
-->withHeader('api-version', '2024-11-11')
+->withApiVersion('2024-11-11')
+->withApiVersion(null) // suppress
+```
+
+#### `withoutApiVersion()`
+Suppress the `api-version` header for this call, overriding any per-service config default.
+
+```php
+->withoutApiVersion()
+```
+
+#### `withHeader(string $key, string|null $value)`
+Set an arbitrary HTTP request header. Pass `null` to suppress a header that would otherwise be added.
+
+```php
 ->withHeader('idempotency-key', 'my-key')
 ```
 
@@ -293,7 +307,6 @@ Set multiple HTTP request headers at once. Merges with any previously set header
 
 ```php
 ->withHeaders([
-    'api-version'     => '2024-11-11',
     'idempotency-key' => 'my-key',
 ])
 ```

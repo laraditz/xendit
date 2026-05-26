@@ -66,7 +66,9 @@ $session->status->label();    // 'Active', 'Completed', etc.
 | `for(Model)` | Attach session to any Eloquent model (polymorphic) |
 | `forUserId(string)` | Set `for-user-id` header **and** persist to `xendit_sessions.for_user_id` |
 | `withSplitRule(string)` | Set `with-split-rule` header **and** persist to `xendit_sessions.split_rule_id` |
-| `withHeader(string, string)` | Set a single arbitrary request header |
+| `withApiVersion(?string)` | Set the `api-version` header; `null` suppresses it |
+| `withoutApiVersion()` | Suppress the `api-version` header for this call |
+| `withHeader(string, string\|null)` | Set a single arbitrary request header |
 | `withHeaders(array)` | Merge multiple request headers at once |
 
 ## `create(): XenditSession`
@@ -167,19 +169,39 @@ echo $session->for_user_id;  // 'sub-account-user-id'
 echo $session->split_rule_id; // 'split-rule-id'
 ```
 
-### Custom request headers
+### API version
 
-Any arbitrary header can be set generically on all three operations:
+By default no `api-version` header is sent. Use `withApiVersion()` to set one for a specific call, or configure a default for all session calls in `config/xendit.php`:
 
 ```php
-// On create
+// Per-request override
 Xendit::session()
-    ->withHeader('api-version', '2024-11-11')
+    ->withApiVersion('2024-05-01')
     ->amount(100.00)
     ->sessionType('PAY')
     ->mode('PAYMENT_LINK')
     ->create();
 
+// Suppress the header even if a config default is set
+Xendit::session()
+    ->withoutApiVersion()
+    ->get('ps-abc123');
+```
+
+Config default (applies to all session calls unless overridden):
+
+```php
+// config/xendit.php
+'api_versions' => [
+    'session' => '2024-05-01',
+],
+```
+
+### Custom request headers
+
+Any arbitrary header can be set on all three operations:
+
+```php
 // On get
 Xendit::session()
     ->withHeader('for-user-id', 'uid')
@@ -192,10 +214,7 @@ Xendit::session()
 
 // Multiple headers at once
 Xendit::session()
-    ->withHeaders([
-        'api-version'     => '2024-11-11',
-        'idempotency-key' => 'my-key',
-    ])
+    ->withHeaders(['idempotency-key' => 'my-key'])
     ->create();
 ```
 
