@@ -47,7 +47,10 @@ return [
     |
     */
     'api_versions' => [
-        // 'payment_request' => '2024-11-11',
+        'payment_request' => '2024-11-11',
+        'payment' => '2024-11-11',
+        'payment_token' => '2024-11-11',
+        'customer' => '2020-10-31',
         // 'session'         => '2024-05-01',
         //
         // To suppress the header for a service that has a $defaultApiVersion,
