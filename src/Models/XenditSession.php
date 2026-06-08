@@ -42,7 +42,7 @@ class XenditSession extends Model
         'canceled_at'     => 'datetime',
     ];
 
-    public function sessionable(): MorphTo
+    public function payable(): MorphTo
     {
         return $this->morphTo();
     }
