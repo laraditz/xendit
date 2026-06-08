@@ -2,6 +2,14 @@
 
 All notable changes to `xendit` will be documented in this file
 
+## 1.0.4 - 2026-06-08
+
+### Fixed
+
+- `XenditSession` model — renamed morph relationship method from `sessionable()` to `payable()` to match the morph name used elsewhere
+
+---
+
 ## 1.0.3 - 2026-05-26
 
 ### Changed
