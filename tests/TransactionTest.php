@@ -44,4 +44,12 @@ class TransactionTest extends TestCase
         $this->assertSame('SUCCESS', $success->getRawOriginal('status'));
         $this->assertSame('PAYMENT', $success->getRawOriginal('type'));
     }
+
+    public function test_settlement_status_and_settled_at_columns_exist(): void
+    {
+        $columns = Schema::getColumnListing('xendit_transactions');
+
+        $this->assertContains('settlement_status', $columns);
+        $this->assertContains('settled_at', $columns);
+    }
 }
