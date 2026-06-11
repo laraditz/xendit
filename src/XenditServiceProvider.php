@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Laraditz\Xendit\Client\XenditClient;
 use Laraditz\Xendit\Events\XenditApiResponseReceived;
+use Laraditz\Xendit\Listeners\LinkTransactionsToSource;
 use Laraditz\Xendit\Listeners\SyncTransactionFromApiResponse;
 use Laraditz\Xendit\Models\XenditCustomer;
 use Laraditz\Xendit\Models\XenditPayment;
@@ -38,6 +39,9 @@ class XenditServiceProvider extends ServiceProvider
 
         // Sync local transactions from Xendit Transaction API responses
         Event::listen(XenditApiResponseReceived::class, SyncTransactionFromApiResponse::class);
+
+        // Late-link unlinked transactions once their source payment/session is fetched
+        Event::listen(XenditApiResponseReceived::class, LinkTransactionsToSource::class);
 
         if ($this->app->runningInConsole()) {
             // Publish configuration
