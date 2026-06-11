@@ -9,6 +9,7 @@ use Laraditz\Xendit\Enums\SettlementStatus;
 use Laraditz\Xendit\Enums\TransactionStatus;
 use Laraditz\Xendit\Enums\TransactionType;
 use Laraditz\Xendit\Events\TransactionSettled;
+use Laraditz\Xendit\Models\XenditPayment;
 
 class XenditTransaction extends Model
 {
@@ -199,5 +200,72 @@ class XenditTransaction extends Model
         event(new TransactionSettled($this));
 
         return $this;
+    }
+
+    /**
+     * Create or update a local transaction record from a Xendit Transaction API response.
+     * Returns null if no matching local row exists and no XenditPayment can be
+     * resolved via reference_id (the required payment_id FK can't be satisfied).
+     */
+    public static function syncFromApiResponse(array $data): ?self
+    {
+        $transactionId = data_get($data, 'id');
+
+        if (!$transactionId) {
+            return null;
+        }
+
+        $transaction = static::where('transaction_id', $transactionId)->first();
+
+        if (!$transaction) {
+            $payment = XenditPayment::where('external_id', data_get($data, 'reference_id'))->first();
+
+            if (!$payment) {
+                return null;
+            }
+
+            $transaction = new static([
+                'payment_id' => $payment->id,
+                'transaction_id' => $transactionId,
+            ]);
+        }
+
+        $transaction->fill([
+            'reference_id' => data_get($data, 'reference_id'),
+            'type' => data_get($data, 'type'),
+            'status' => data_get($data, 'status'),
+            'amount' => data_get($data, 'amount'),
+            'currency' => data_get($data, 'currency'),
+            'payment_method' => data_get($data, 'channel_code'),
+            'fee' => data_get($data, 'fee.xendit_fee', 0),
+            'net_amount' => data_get($data, 'net_amount'),
+            'completed_at' => data_get($data, 'payment_date'),
+            'raw_response' => $data,
+        ]);
+
+        $newSettlementStatus = data_get($data, 'settlement_status');
+        $oldSettlementStatus = $transaction->settlement_status?->value;
+
+        $transitionsToSettled = $newSettlementStatus
+            && $newSettlementStatus !== $oldSettlementStatus
+            && in_array($newSettlementStatus, [
+                SettlementStatus::Settled->value,
+                SettlementStatus::EarlySettled->value,
+            ]);
+
+        if ($transitionsToSettled) {
+            $transaction->save();
+            $transaction->markAsSettled(
+                SettlementStatus::from($newSettlementStatus),
+                data_get($data, 'actual_settlement_date'),
+            );
+        } else {
+            $transaction->settlement_status = $newSettlementStatus
+                ? SettlementStatus::from($newSettlementStatus)
+                : null;
+            $transaction->save();
+        }
+
+        return $transaction;
     }
 }
