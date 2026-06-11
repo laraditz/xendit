@@ -9,7 +9,6 @@ use Laraditz\Xendit\Enums\SettlementStatus;
 use Laraditz\Xendit\Enums\TransactionStatus;
 use Laraditz\Xendit\Enums\TransactionType;
 use Laraditz\Xendit\Events\TransactionSettled;
-use Laraditz\Xendit\Models\XenditPayment;
 
 class XenditTransaction extends Model
 {
@@ -235,8 +234,6 @@ class XenditTransaction extends Model
 
     /**
      * Create or update a local transaction record from a Xendit Transaction API response.
-     * Returns null if no matching local row exists and no XenditPayment can be
-     * resolved via reference_id (the required payment_id FK can't be satisfied).
      */
     public static function syncFromApiResponse(array $data): ?self
     {
@@ -246,20 +243,7 @@ class XenditTransaction extends Model
             return null;
         }
 
-        $transaction = static::where('transaction_id', $transactionId)->first();
-
-        if (!$transaction) {
-            $payment = XenditPayment::where('external_id', data_get($data, 'reference_id'))->first();
-
-            if (!$payment) {
-                return null;
-            }
-
-            $transaction = new static([
-                'payment_id' => $payment->id,
-                'transaction_id' => $transactionId,
-            ]);
-        }
+        $transaction = static::firstOrNew(['transaction_id' => $transactionId]);
 
         $transaction->fill([
             'reference_id' => data_get($data, 'reference_id'),

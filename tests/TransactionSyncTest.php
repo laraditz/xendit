@@ -34,25 +34,14 @@ class TransactionSyncTest extends TestCase
         ], $overrides);
     }
 
-    public function test_returns_null_and_creates_nothing_when_no_matching_payment(): void
+    public function test_creates_row_with_null_source_when_synced(): void
     {
-        $result = XenditTransaction::syncFromApiResponse($this->sampleResponse());
-
-        $this->assertNull($result);
-        $this->assertSame(0, XenditTransaction::count());
-    }
-
-    public function test_creates_new_row_when_matching_payment_exists(): void
-    {
-        $payment = XenditPayment::create([
-            'external_id' => 'ORDER-123',
-            'payment_type' => 'PAYMENT_REQUEST',
-            'amount' => 1520,
-        ]);
-
         $transaction = XenditTransaction::syncFromApiResponse($this->sampleResponse());
 
         $this->assertNotNull($transaction);
+        $this->assertSame(1, XenditTransaction::count());
+        $this->assertNull($transaction->source_id);
+        $this->assertNull($transaction->source_type);
         $this->assertSame('txn_cd1c10b6-e7f7-4037-a887-eeb2ca11a8d6', $transaction->transaction_id);
         $this->assertSame('ORDER-123', $transaction->reference_id);
         $this->assertSame('PAYMENT', $transaction->getRawOriginal('type'));
@@ -66,14 +55,22 @@ class TransactionSyncTest extends TestCase
         $this->assertSame($this->sampleResponse(), $transaction->raw_response);
     }
 
-    public function test_updates_existing_row_matched_by_transaction_id(): void
+    public function test_syncing_does_not_link_an_existing_matching_payment(): void
     {
-        $payment = XenditPayment::create([
+        XenditPayment::create([
             'external_id' => 'ORDER-123',
             'payment_type' => 'PAYMENT_REQUEST',
             'amount' => 1520,
         ]);
 
+        $transaction = XenditTransaction::syncFromApiResponse($this->sampleResponse());
+
+        $this->assertNull($transaction->source_id);
+        $this->assertNull($transaction->source_type);
+    }
+
+    public function test_updates_existing_row_matched_by_transaction_id(): void
+    {
         XenditTransaction::syncFromApiResponse($this->sampleResponse(['settlement_status' => 'PENDING']));
 
         $this->assertSame(1, XenditTransaction::count());
@@ -90,12 +87,6 @@ class TransactionSyncTest extends TestCase
     public function test_transitioning_to_settled_calls_mark_as_settled_and_fires_event(): void
     {
         Event::fake([TransactionSettled::class]);
-
-        XenditPayment::create([
-            'external_id' => 'ORDER-123',
-            'payment_type' => 'PAYMENT_REQUEST',
-            'amount' => 1520,
-        ]);
 
         XenditTransaction::syncFromApiResponse($this->sampleResponse(['settlement_status' => 'PENDING']));
 
@@ -118,12 +109,6 @@ class TransactionSyncTest extends TestCase
     {
         Event::fake([TransactionSettled::class]);
 
-        XenditPayment::create([
-            'external_id' => 'ORDER-123',
-            'payment_type' => 'PAYMENT_REQUEST',
-            'amount' => 1520,
-        ]);
-
         XenditTransaction::syncFromApiResponse($this->sampleResponse([
             'settlement_status' => 'SETTLED',
             'actual_settlement_date' => '2026-06-10T02:18:08.685Z',
@@ -141,12 +126,6 @@ class TransactionSyncTest extends TestCase
 
     public function test_transaction_service_get_syncs_local_transaction(): void
     {
-        XenditPayment::create([
-            'external_id' => 'ORDER-123',
-            'payment_type' => 'PAYMENT_REQUEST',
-            'amount' => 1520,
-        ]);
-
         \Illuminate\Support\Facades\Http::fake([
             'api.xendit.co/transactions/txn_cd1c10b6-e7f7-4037-a887-eeb2ca11a8d6' => \Illuminate\Support\Facades\Http::response($this->sampleResponse(), 200),
         ]);
@@ -165,18 +144,6 @@ class TransactionSyncTest extends TestCase
 
     public function test_transaction_service_list_syncs_each_local_transaction(): void
     {
-        XenditPayment::create([
-            'external_id' => 'ORDER-123',
-            'payment_type' => 'PAYMENT_REQUEST',
-            'amount' => 1520,
-        ]);
-
-        XenditPayment::create([
-            'external_id' => 'ORDER-456',
-            'payment_type' => 'PAYMENT_REQUEST',
-            'amount' => 3000,
-        ]);
-
         \Illuminate\Support\Facades\Http::fake([
             'api.xendit.co/transactions*' => \Illuminate\Support\Facades\Http::response([
                 'data' => [
