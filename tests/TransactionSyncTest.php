@@ -140,4 +140,70 @@ class TransactionSyncTest extends TestCase
 
         Event::assertDispatchedTimes(TransactionSettled::class, 1);
     }
+
+    public function test_transaction_service_get_syncs_local_transaction(): void
+    {
+        XenditPayment::create([
+            'external_id' => 'ORDER-123',
+            'payment_type' => 'PAYMENT_REQUEST',
+            'amount' => 1520,
+        ]);
+
+        \Illuminate\Support\Facades\Http::fake([
+            'api.xendit.co/transactions/txn_cd1c10b6-e7f7-4037-a887-eeb2ca11a8d6' => \Illuminate\Support\Facades\Http::response($this->sampleResponse(), 200),
+        ]);
+
+        $service = app(\Laraditz\Xendit\Services\TransactionService::class);
+        $response = $service->get('txn_cd1c10b6-e7f7-4037-a887-eeb2ca11a8d6');
+
+        $this->assertSame($this->sampleResponse(), $response);
+
+        $this->assertSame(1, XenditTransaction::count());
+        $this->assertSame(
+            'txn_cd1c10b6-e7f7-4037-a887-eeb2ca11a8d6',
+            XenditTransaction::first()->transaction_id
+        );
+    }
+
+    public function test_transaction_service_list_syncs_each_local_transaction(): void
+    {
+        XenditPayment::create([
+            'external_id' => 'ORDER-123',
+            'payment_type' => 'PAYMENT_REQUEST',
+            'amount' => 1520,
+        ]);
+
+        XenditPayment::create([
+            'external_id' => 'ORDER-456',
+            'payment_type' => 'PAYMENT_REQUEST',
+            'amount' => 3000,
+        ]);
+
+        \Illuminate\Support\Facades\Http::fake([
+            'api.xendit.co/transactions*' => \Illuminate\Support\Facades\Http::response([
+                'data' => [
+                    $this->sampleResponse(),
+                    $this->sampleResponse(['id' => 'txn_other', 'reference_id' => 'ORDER-456']),
+                ],
+                'has_more' => false,
+            ], 200),
+        ]);
+
+        $service = app(\Laraditz\Xendit\Services\TransactionService::class);
+        $service->list();
+
+        $this->assertSame(2, XenditTransaction::count());
+    }
+
+    public function test_unrelated_endpoint_is_not_synced(): void
+    {
+        \Illuminate\Support\Facades\Http::fake([
+            'api.xendit.co/payments/pay_1' => \Illuminate\Support\Facades\Http::response(['id' => 'pay_1'], 200),
+        ]);
+
+        $client = app(\Laraditz\Xendit\Client\XenditClient::class);
+        $client->get('/payments/pay_1');
+
+        $this->assertSame(0, XenditTransaction::count());
+    }
 }

@@ -3,8 +3,11 @@
 namespace Laraditz\Xendit;
 
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Laraditz\Xendit\Client\XenditClient;
+use Laraditz\Xendit\Events\XenditApiResponseReceived;
+use Laraditz\Xendit\Listeners\SyncTransactionFromApiResponse;
 use Laraditz\Xendit\Models\XenditCustomer;
 use Laraditz\Xendit\Models\XenditPayment;
 use Laraditz\Xendit\Models\XenditSession;
@@ -32,6 +35,9 @@ class XenditServiceProvider extends ServiceProvider
         XenditPayment::observe(XenditPaymentObserver::class);
         XenditTransaction::observe(XenditTransactionObserver::class);
         XenditWebhookLog::observe(XenditWebhookLogObserver::class);
+
+        // Sync local transactions from Xendit Transaction API responses
+        Event::listen(XenditApiResponseReceived::class, SyncTransactionFromApiResponse::class);
 
         if ($this->app->runningInConsole()) {
             // Publish configuration
