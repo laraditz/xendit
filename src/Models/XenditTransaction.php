@@ -18,7 +18,8 @@ class XenditTransaction extends Model
     protected $table = 'xendit_transactions';
 
     protected $fillable = [
-        'payment_id',
+        'source_id',
+        'source_type',
         'transaction_id',
         'reference_id',
         'type',

@@ -53,7 +53,6 @@ class TransactionSyncTest extends TestCase
         $transaction = XenditTransaction::syncFromApiResponse($this->sampleResponse());
 
         $this->assertNotNull($transaction);
-        $this->assertSame($payment->id, $transaction->payment_id);
         $this->assertSame('txn_cd1c10b6-e7f7-4037-a887-eeb2ca11a8d6', $transaction->transaction_id);
         $this->assertSame('ORDER-123', $transaction->reference_id);
         $this->assertSame('PAYMENT', $transaction->getRawOriginal('type'));
@@ -86,7 +85,6 @@ class TransactionSyncTest extends TestCase
 
         $this->assertSame(1, XenditTransaction::count());
         $this->assertEquals(2000, $updated->amount);
-        $this->assertSame($payment->id, $updated->payment_id);
     }
 
     public function test_transitioning_to_settled_calls_mark_as_settled_and_fires_event(): void

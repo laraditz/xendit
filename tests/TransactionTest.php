@@ -78,6 +78,15 @@ class TransactionTest extends TestCase
         );
     }
 
+    public function test_source_columns_replace_payment_id(): void
+    {
+        $columns = Schema::getColumnListing('xendit_transactions');
+
+        $this->assertContains('source_id', $columns);
+        $this->assertContains('source_type', $columns);
+        $this->assertNotContains('payment_id', $columns);
+    }
+
     public function test_settlement_casts_and_scopes(): void
     {
         XenditTransaction::create([
