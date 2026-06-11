@@ -8,6 +8,8 @@ use Laraditz\Xendit\Enums\SettlementStatus;
 use Laraditz\Xendit\Enums\TransactionStatus;
 use Laraditz\Xendit\Enums\TransactionType;
 use Laraditz\Xendit\Events\TransactionSettled;
+use Laraditz\Xendit\Models\XenditPayment;
+use Laraditz\Xendit\Models\XenditSession;
 use Laraditz\Xendit\Models\XenditTransaction;
 
 class TransactionTest extends TestCase
@@ -146,5 +148,82 @@ class TransactionTest extends TestCase
         Event::assertDispatched(TransactionSettled::class, function ($event) use ($transaction) {
             return $event->transaction->is($transaction);
         });
+    }
+
+    public function test_source_relation_and_scopes(): void
+    {
+        $payment = XenditPayment::create([
+            'external_id' => 'ORDER-SOURCE-1',
+            'payment_type' => 'PAYMENT_REQUEST',
+            'amount' => 100,
+        ]);
+
+        $session = XenditSession::create([
+            'reference_id' => 'ORDER-SOURCE-2',
+            'session_type' => 'PAY',
+        ]);
+
+        $linkedToPayment = XenditTransaction::create([
+            'transaction_id' => 'txn_source_payment',
+            'type' => TransactionType::Payment,
+            'status' => TransactionStatus::Success,
+            'amount' => 100,
+            'net_amount' => 99,
+            'source_id' => $payment->id,
+            'source_type' => XenditPayment::class,
+        ]);
+
+        $linkedToSession = XenditTransaction::create([
+            'transaction_id' => 'txn_source_session',
+            'type' => TransactionType::Payment,
+            'status' => TransactionStatus::Success,
+            'amount' => 100,
+            'net_amount' => 99,
+            'source_id' => $session->id,
+            'source_type' => XenditSession::class,
+        ]);
+
+        $unlinked = XenditTransaction::create([
+            'transaction_id' => 'txn_unlinked',
+            'type' => TransactionType::Payment,
+            'status' => TransactionStatus::Success,
+            'amount' => 100,
+            'net_amount' => 99,
+        ]);
+
+        $this->assertTrue($linkedToPayment->source->is($payment));
+        $this->assertTrue($linkedToSession->source->is($session));
+        $this->assertNull($unlinked->source);
+
+        $this->assertCount(1, XenditTransaction::fromSource($payment)->get());
+        $this->assertCount(1, XenditTransaction::fromSource($session)->get());
+        $this->assertCount(1, XenditTransaction::unlinked()->get());
+
+        $this->assertCount(1, $payment->transactions()->get());
+        $this->assertCount(1, $session->transactions()->get());
+    }
+
+    public function test_link_source_sets_source_fields(): void
+    {
+        $payment = XenditPayment::create([
+            'external_id' => 'ORDER-LINK-1',
+            'payment_type' => 'PAYMENT_REQUEST',
+            'amount' => 100,
+        ]);
+
+        $transaction = XenditTransaction::create([
+            'transaction_id' => 'txn_to_link',
+            'type' => TransactionType::Payment,
+            'status' => TransactionStatus::Success,
+            'amount' => 100,
+            'net_amount' => 99,
+        ]);
+
+        $transaction->linkSource($payment);
+        $transaction->refresh();
+
+        $this->assertSame($payment->id, $transaction->source_id);
+        $this->assertSame(XenditPayment::class, $transaction->source_type);
+        $this->assertTrue($transaction->source->is($payment));
     }
 }

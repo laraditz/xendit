@@ -3,7 +3,7 @@
 namespace Laraditz\Xendit\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laraditz\Xendit\Enums\SettlementStatus;
 use Laraditz\Xendit\Enums\TransactionStatus;
@@ -48,11 +48,11 @@ class XenditTransaction extends Model
     ];
 
     /**
-     * Transaction belongs to a payment
+     * The model (XenditPayment or XenditSession) this transaction originated from
      */
-    public function payment(): BelongsTo
+    public function source(): MorphTo
     {
-        return $this->belongsTo(XenditPayment::class, 'payment_id');
+        return $this->morphTo();
     }
 
     /**
@@ -120,6 +120,23 @@ class XenditTransaction extends Model
     public function scopePendingSettlement($query)
     {
         return $query->where('settlement_status', SettlementStatus::Pending->value);
+    }
+
+    /**
+     * Scope to filter transactions belonging to a given source model
+     */
+    public function scopeFromSource($query, Model $source)
+    {
+        return $query->where('source_type', $source::class)
+            ->where('source_id', $source->getKey());
+    }
+
+    /**
+     * Scope to filter transactions with no linked source
+     */
+    public function scopeUnlinked($query)
+    {
+        return $query->whereNull('source_id');
     }
 
     /**
@@ -199,6 +216,19 @@ class XenditTransaction extends Model
         ]);
 
         event(new TransactionSettled($this));
+
+        return $this;
+    }
+
+    /**
+     * Link this transaction to its source model (XenditPayment or XenditSession)
+     */
+    public function linkSource(Model $source): self
+    {
+        $this->update([
+            'source_id' => $source->getKey(),
+            'source_type' => $source::class,
+        ]);
 
         return $this;
     }

@@ -4,11 +4,13 @@ namespace Laraditz\Xendit\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laraditz\Xendit\Enums\SessionMode;
 use Laraditz\Xendit\Enums\SessionStatus;
 use Laraditz\Xendit\Enums\SessionType;
+use Laraditz\Xendit\Models\XenditTransaction;
 
 class XenditSession extends Model
 {
@@ -50,6 +52,11 @@ class XenditSession extends Model
     public function xenditCustomer(): BelongsTo
     {
         return $this->belongsTo(XenditCustomer::class, 'customer_id', 'xendit_id');
+    }
+
+    public function transactions(): MorphMany
+    {
+        return $this->morphMany(XenditTransaction::class, 'source');
     }
 
     public function markAsCompleted(): self

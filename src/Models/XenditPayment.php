@@ -3,7 +3,7 @@
 namespace Laraditz\Xendit\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laraditz\Xendit\Enums\PaymentStatus;
@@ -64,9 +64,9 @@ class XenditPayment extends Model
     /**
      * Payment has many transactions
      */
-    public function transactions(): HasMany
+    public function transactions(): MorphMany
     {
-        return $this->hasMany(XenditTransaction::class, 'payment_id');
+        return $this->morphMany(XenditTransaction::class, 'source');
     }
 
     /**
