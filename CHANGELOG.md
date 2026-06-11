@@ -2,6 +2,22 @@
 
 All notable changes to `xendit` will be documented in this file
 
+## Unreleased
+
+### Breaking
+
+- `TransactionType` and `TransactionStatus` are now string-backed enums storing Xendit's raw API values (e.g. `TransactionStatus::Success->value === 'SUCCESS'`, `TransactionType::Payment->value === 'PAYMENT'`) instead of integer-backed values
+- `xendit_transactions.status` column changed from `tinyInteger` to nullable `string` to store the raw enum value
+
+### Added
+
+- `xendit_transactions.reference_id` column (nullable, indexed) — stores the merchant's payment reference from the Xendit Transaction API response, used to resolve the related `XenditPayment` via `external_id`
+- `xendit_transactions.settlement_status`/`settled_at` columns, `SettlementStatus` enum, `XenditTransaction::markAsSettled()`, and `TransactionSettled` event
+- `XenditApiRequesting`/`XenditApiResponseReceived` events fired from `XenditClient` around every API call
+- `XenditTransaction::syncFromApiResponse()` and `SyncTransactionFromApiResponse` listener — `TransactionService::get()`/`list()` now automatically create-or-update local `xendit_transactions` rows (matched by `transaction_id`, with `payment_id` resolved via `XenditPayment.external_id == reference_id`)
+
+---
+
 ## 1.0.4 - 2026-06-08
 
 ### Fixed

@@ -2,11 +2,13 @@
 
 namespace Laraditz\Xendit\Enums;
 
-enum TransactionStatus: int
+enum TransactionStatus: string
 {
-    case Pending = 0;
-    case Success = 1;
-    case Failed = 2;
+    case Pending = 'PENDING';
+    case Success = 'SUCCESS';
+    case Failed = 'FAILED';
+    case Voided = 'VOIDED';
+    case Reversed = 'REVERSED';
 
     public function label(): string
     {
@@ -14,6 +16,8 @@ enum TransactionStatus: int
             self::Pending => 'Pending',
             self::Success => 'Success',
             self::Failed => 'Failed',
+            self::Voided => 'Voided',
+            self::Reversed => 'Reversed',
         };
     }
 
@@ -23,6 +27,8 @@ enum TransactionStatus: int
             self::Pending => 'warning',
             self::Success => 'success',
             self::Failed => 'danger',
+            self::Voided => 'secondary',
+            self::Reversed => 'secondary',
         };
     }
 
@@ -39,5 +45,15 @@ enum TransactionStatus: int
     public function isFailed(): bool
     {
         return $this === self::Failed;
+    }
+
+    public function isVoided(): bool
+    {
+        return $this === self::Voided;
+    }
+
+    public function isReversed(): bool
+    {
+        return $this === self::Reversed;
     }
 }
