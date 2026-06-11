@@ -2,7 +2,10 @@
 
 namespace Laraditz\Xendit\Tests;
 
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
+use Laraditz\Xendit\Events\XenditApiRequesting;
+use Laraditz\Xendit\Events\XenditApiResponseReceived;
 
 class XenditClientTest extends TestCase
 {
@@ -74,5 +77,46 @@ class XenditClientTest extends TestCase
         Http::assertSent(function ($request) {
             return $request->hasHeader('for-user-id', 'uid-delete');
         });
+    }
+
+    public function test_get_dispatches_requesting_and_response_received_events(): void
+    {
+        Event::fake([XenditApiRequesting::class, XenditApiResponseReceived::class]);
+
+        Http::fake([
+            'api.xendit.co/transactions/txn_1' => Http::response(['id' => 'txn_1', 'status' => 'SUCCESS'], 200),
+        ]);
+
+        $client = app(\Laraditz\Xendit\Client\XenditClient::class);
+        $client->get('/transactions/txn_1');
+
+        Event::assertDispatched(XenditApiRequesting::class, function ($event) {
+            return $event->method === 'GET' && $event->endpoint === '/transactions/txn_1';
+        });
+
+        Event::assertDispatched(XenditApiResponseReceived::class, function ($event) {
+            return $event->method === 'GET'
+                && $event->endpoint === '/transactions/txn_1'
+                && $event->response === ['id' => 'txn_1', 'status' => 'SUCCESS'];
+        });
+    }
+
+    public function test_response_received_event_is_not_dispatched_on_error(): void
+    {
+        Event::fake([XenditApiResponseReceived::class]);
+
+        Http::fake([
+            'api.xendit.co/transactions/txn_missing' => Http::response(['message' => 'Not Found'], 404),
+        ]);
+
+        $client = app(\Laraditz\Xendit\Client\XenditClient::class);
+
+        try {
+            $client->get('/transactions/txn_missing');
+        } catch (\Throwable $e) {
+            // expected
+        }
+
+        Event::assertNotDispatched(XenditApiResponseReceived::class);
     }
 }
