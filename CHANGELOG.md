@@ -8,13 +8,18 @@ All notable changes to `xendit` will be documented in this file
 
 - `TransactionType` and `TransactionStatus` are now string-backed enums storing Xendit's raw API values (e.g. `TransactionStatus::Success->value === 'SUCCESS'`, `TransactionType::Payment->value === 'PAYMENT'`) instead of integer-backed values
 - `xendit_transactions.status` column changed from `tinyInteger` to nullable `string` to store the raw enum value
+- `xendit_transactions.payment_id` column is dropped. Replaced by nullable `source_id`/`source_type` polymorphic columns. `XenditTransaction::payment(): BelongsTo` and `XenditPayment::transactions(): HasMany` are replaced by `XenditTransaction::source(): MorphTo` and `XenditPayment::transactions()`/`XenditSession::transactions(): MorphMany`. Existing rows get `source_id`/`source_type` = `null` (no backfill).
+- `XenditTransaction::syncFromApiResponse()` no longer requires a matching local `XenditPayment` — every Transaction API response is now created/updated locally regardless of whether a matching source exists (only returns `null` if the response has no `id`)
 
 ### Added
 
 - `xendit_transactions.reference_id` column (nullable, indexed) — stores the merchant's payment reference from the Xendit Transaction API response, used to resolve the related `XenditPayment` via `external_id`
 - `xendit_transactions.settlement_status`/`settled_at` columns, `SettlementStatus` enum, `XenditTransaction::markAsSettled()`, and `TransactionSettled` event
 - `XenditApiRequesting`/`XenditApiResponseReceived` events fired from `XenditClient` around every API call
-- `XenditTransaction::syncFromApiResponse()` and `SyncTransactionFromApiResponse` listener — `TransactionService::get()`/`list()` now automatically create-or-update local `xendit_transactions` rows (matched by `transaction_id`, with `payment_id` resolved via `XenditPayment.external_id == reference_id`)
+- `XenditTransaction::syncFromApiResponse()` and `SyncTransactionFromApiResponse` listener — `TransactionService::get()`/`list()` now automatically create-or-update local `xendit_transactions` rows (matched by `transaction_id`)
+- `XenditSession::transactions(): MorphMany` — inverse of `XenditTransaction::source()`
+- `XenditTransaction::scopeFromSource()`, `scopeUnlinked()`, and `linkSource()` helpers for working with the polymorphic `source` relationship
+- `LinkTransactionsToSource` listener — when a `XenditPayment` or `XenditSession` is fetched via `GET /v3/payment_requests/{id}` or `GET /sessions/{id}`, any unlinked `xendit_transactions` rows matching its `reference_id` are linked to it via `source_id`/`source_type`
 
 ---
 
