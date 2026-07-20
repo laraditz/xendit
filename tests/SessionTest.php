@@ -469,6 +469,39 @@ class SessionTest extends TestCase
         Event::assertDispatched(\Laraditz\Xendit\Events\SessionCompleted::class);
     }
 
+    public function test_webhook_handler_marks_session_expired_with_suffixed_reference_id(): void
+    {
+        Event::fake();
+
+        $session = \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id'       => 'order-webhook-expire-suffix',
+            'payment_session_id' => 'ps-wh4',
+            'amount'             => 100.00,
+            'session_type'       => 'PAY',
+            'mode'               => 'PAYMENT_LINK',
+            'expires_at'         => now()->addMinutes(30),
+        ]);
+
+        $handler = app(\Laraditz\Xendit\Support\WebhookHandler::class);
+        $handler->handle([
+            'event'       => 'payment_session.expired',
+            'business_id' => 'biz-123',
+            'created'     => now()->toIso8601String(),
+            'data'        => [
+                'payment_session_id' => 'ps-wh4',
+                'reference_id'       => 'order-webhook-expire-suffix_2A7-t_bd_2',
+                'status'             => 'EXPIRED',
+            ],
+        ]);
+
+        $this->assertEquals(
+            \Laraditz\Xendit\Enums\SessionStatus::Expired,
+            $session->fresh()->status
+        );
+        $this->assertNotNull($session->fresh()->expires_at);
+        Event::assertDispatched(\Laraditz\Xendit\Events\SessionExpired::class);
+    }
+
     public function test_xendit_session_returns_session_builder(): void
     {
         $builder = \Laraditz\Xendit\Facades\Xendit::session();
