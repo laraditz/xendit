@@ -4,6 +4,8 @@ All notable changes to `xendit` will be documented in this file
 
 ## Unreleased
 
+## 1.1.0 - 2026-07-20
+
 ### Breaking
 
 - `TransactionType` and `TransactionStatus` are now string-backed enums storing Xendit's raw API values (e.g. `TransactionStatus::Success->value === 'SUCCESS'`, `TransactionType::Payment->value === 'PAYMENT'`) instead of integer-backed values
