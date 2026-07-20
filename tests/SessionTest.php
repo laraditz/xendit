@@ -487,4 +487,19 @@ class SessionTest extends TestCase
         $this->assertCount(1, $results);
         $this->assertEquals('scope-rule-1', $results->first()->reference_id);
     }
+
+    public function test_matching_reference_id_scope_trims_suffix_after_underscore(): void
+    {
+        $session = \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id' => 'ORDER-SUFFIX-TEST',
+        ]);
+
+        $suffixed = \Laraditz\Xendit\Models\XenditSession::matchingReferenceId('ORDER-SUFFIX-TEST_2A7-t_bd_2')->first();
+        $this->assertNotNull($suffixed);
+        $this->assertEquals($session->id, $suffixed->id);
+
+        $exact = \Laraditz\Xendit\Models\XenditSession::matchingReferenceId('ORDER-SUFFIX-TEST')->first();
+        $this->assertNotNull($exact);
+        $this->assertEquals($session->id, $exact->id);
+    }
 }
