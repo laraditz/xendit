@@ -438,6 +438,37 @@ class SessionTest extends TestCase
         Event::assertDispatched(\Laraditz\Xendit\Events\SessionExpired::class);
     }
 
+    public function test_webhook_handler_marks_session_completed_with_suffixed_reference_id(): void
+    {
+        Event::fake();
+
+        $session = \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id'       => 'order-webhook-complete-suffix',
+            'payment_session_id' => 'ps-wh3',
+            'amount'             => 100.00,
+            'session_type'       => 'PAY',
+            'mode'               => 'PAYMENT_LINK',
+        ]);
+
+        $handler = app(\Laraditz\Xendit\Support\WebhookHandler::class);
+        $handler->handle([
+            'event'       => 'payment_session.completed',
+            'business_id' => 'biz-123',
+            'created'     => now()->toIso8601String(),
+            'data'        => [
+                'payment_session_id' => 'ps-wh3',
+                'reference_id'       => 'order-webhook-complete-suffix_2A7-t_bd_2',
+                'status'             => 'COMPLETED',
+            ],
+        ]);
+
+        $this->assertEquals(
+            \Laraditz\Xendit\Enums\SessionStatus::Completed,
+            $session->fresh()->status
+        );
+        Event::assertDispatched(\Laraditz\Xendit\Events\SessionCompleted::class);
+    }
+
     public function test_xendit_session_returns_session_builder(): void
     {
         $builder = \Laraditz\Xendit\Facades\Xendit::session();

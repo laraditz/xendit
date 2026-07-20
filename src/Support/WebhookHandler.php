@@ -271,7 +271,7 @@ class WebhookHandler
 
     protected function handleSessionCompleted(array $payload): void
     {
-        $session = XenditSession::referenceId(data_get($payload, 'data.reference_id'))->first();
+        $session = XenditSession::matchingReferenceId(data_get($payload, 'data.reference_id'))->first();
 
         if ($session) {
             $session->markAsCompleted();
