@@ -76,6 +76,37 @@ class TransactionSourceLinkingTest extends TestCase
         $this->assertSame(XenditSession::class, $transaction->source_type);
     }
 
+    public function test_unlinked_transaction_is_linked_when_session_reference_id_has_suffix(): void
+    {
+        $session = XenditSession::create([
+            'reference_id' => 'ORDER-LINK-SESSION-SUFFIX',
+            'session_type' => 'PAY',
+        ]);
+
+        $transaction = XenditTransaction::create([
+            'transaction_id' => 'txn_unlinked_session_suffix',
+            'reference_id' => 'ORDER-LINK-SESSION-SUFFIX_2A7-t_bd_2',
+            'type' => TransactionType::Payment,
+            'status' => TransactionStatus::Success,
+            'amount' => 1520,
+            'net_amount' => 1518.8,
+        ]);
+
+        Http::fake([
+            'api.xendit.co/sessions/sess_2' => Http::response([
+                'id' => 'sess_2',
+                'reference_id' => 'ORDER-LINK-SESSION-SUFFIX_2A7-t_bd_2',
+            ], 200),
+        ]);
+
+        app(SessionService::class)->get('sess_2');
+
+        $transaction->refresh();
+
+        $this->assertSame($session->id, $transaction->source_id);
+        $this->assertSame(XenditSession::class, $transaction->source_type);
+    }
+
     public function test_already_linked_transaction_is_untouched(): void
     {
         $payment = XenditPayment::create([
