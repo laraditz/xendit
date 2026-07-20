@@ -21,6 +21,10 @@ All notable changes to `xendit` will be documented in this file
 - `XenditTransaction::scopeFromSource()`, `scopeUnlinked()`, and `linkSource()` helpers for working with the polymorphic `source` relationship
 - `LinkTransactionsToSource` listener — when a `XenditPayment` or `XenditSession` is fetched via `GET /v3/payment_requests/{id}` or `GET /sessions/{id}`, any unlinked `xendit_transactions` rows matching its `reference_id` are linked to it via `source_id`/`source_type`
 
+### Fixed
+
+- `XenditSession` matching now tolerates the random suffix Xendit appends after an underscore to the `reference_id` we send (e.g. `XND-SESSION-...uYdW` comes back as `XND-SESSION-...uYdW_2A7-t_bd_2`) — added `XenditSession::scopeMatchingReferenceId()`, which trims everything from the first underscore before matching, and used it in `LinkTransactionsToSource`'s session branch and `WebhookHandler::handleSessionCompleted()`/`handleSessionExpired()`. These previously matched `reference_id` exactly and silently failed to find the session once Xendit appended its suffix.
+
 ---
 
 ## 1.0.4 - 2026-06-08
