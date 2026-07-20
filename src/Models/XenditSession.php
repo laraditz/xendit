@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 use Laraditz\Xendit\Enums\SessionMode;
 use Laraditz\Xendit\Enums\SessionStatus;
 use Laraditz\Xendit\Enums\SessionType;
@@ -95,6 +96,11 @@ class XenditSession extends Model
     public function scopeReferenceId($query, string $referenceId)
     {
         return $query->where('reference_id', $referenceId);
+    }
+
+    public function scopeMatchingReferenceId($query, string $referenceId)
+    {
+        return $query->where('reference_id', Str::before($referenceId, '_'));
     }
 
     public function scopePaymentSessionId($query, string $id)

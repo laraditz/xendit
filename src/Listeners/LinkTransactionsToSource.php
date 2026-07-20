@@ -25,7 +25,7 @@ class LinkTransactionsToSource
             (bool) preg_match('#^/v3/payment_requests/[^/]+$#', $event->endpoint) =>
                 XenditPayment::where('external_id', $referenceId)->first(),
             (bool) preg_match('#^/sessions/[^/]+$#', $event->endpoint) =>
-                XenditSession::where('reference_id', $referenceId)->first(),
+                XenditSession::matchingReferenceId($referenceId)->first(),
             default => null,
         };
 
