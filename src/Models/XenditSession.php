@@ -4,11 +4,14 @@ namespace Laraditz\Xendit\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 use Laraditz\Xendit\Enums\SessionMode;
 use Laraditz\Xendit\Enums\SessionStatus;
 use Laraditz\Xendit\Enums\SessionType;
+use Laraditz\Xendit\Models\XenditTransaction;
 
 class XenditSession extends Model
 {
@@ -52,6 +55,11 @@ class XenditSession extends Model
         return $this->belongsTo(XenditCustomer::class, 'customer_id', 'xendit_id');
     }
 
+    public function transactions(): MorphMany
+    {
+        return $this->morphMany(XenditTransaction::class, 'source');
+    }
+
     public function markAsCompleted(): self
     {
         $this->update(['status' => SessionStatus::Completed, 'completed_at' => now()]);
@@ -88,6 +96,11 @@ class XenditSession extends Model
     public function scopeReferenceId($query, string $referenceId)
     {
         return $query->where('reference_id', $referenceId);
+    }
+
+    public function scopeMatchingReferenceId($query, string $referenceId)
+    {
+        return $query->where('reference_id', Str::before($referenceId, '_'));
     }
 
     public function scopePaymentSessionId($query, string $id)
