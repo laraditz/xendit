@@ -51,4 +51,30 @@ class SessionSyncTest extends TestCase
 
         $this->assertNull($result);
     }
+
+    public function test_completed_at_stays_null_when_status_is_active(): void
+    {
+        XenditSession::create([
+            'reference_id' => 'ORDER-SYNC-1',
+            'payment_session_id' => 'ps-abc123',
+        ]);
+
+        $synced = XenditSession::syncFromApiResponse($this->sampleResponse(['status' => 'ACTIVE']));
+
+        $this->assertSame(SessionStatus::Active, $synced->status);
+        $this->assertNull($synced->completed_at);
+    }
+
+    public function test_completed_at_is_set_when_status_is_completed(): void
+    {
+        XenditSession::create([
+            'reference_id' => 'ORDER-SYNC-1',
+            'payment_session_id' => 'ps-abc123',
+        ]);
+
+        $synced = XenditSession::syncFromApiResponse($this->sampleResponse(['status' => 'COMPLETED']));
+
+        $this->assertSame(SessionStatus::Completed, $synced->status);
+        $this->assertNotNull($synced->completed_at);
+    }
 }
