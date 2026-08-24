@@ -122,4 +122,25 @@ class RefundTest extends TestCase
 
         $this->assertSoftDeleted('xendit_refunds', ['refund_id' => 'rfd-soft-delete']);
     }
+
+    public function test_xendit_payment_refunds_relation(): void
+    {
+        $payment = XenditPayment::create([
+            'external_id' => 'ORDER-REFUND-2',
+            'xendit_id' => 'pr-payment-request-2',
+            'payment_type' => 'PAYMENT_REQUEST',
+            'amount' => 1000,
+        ]);
+
+        $refund = XenditRefund::create([
+            'payment_id' => $payment->id,
+            'refund_id' => 'rfd-relation-1',
+            'payment_request_id' => 'pr-payment-request-2',
+            'amount' => 200,
+            'status' => RefundStatus::Succeeded,
+        ]);
+
+        $this->assertCount(1, $payment->refunds()->get());
+        $this->assertTrue($payment->refunds()->first()->is($refund));
+    }
 }
