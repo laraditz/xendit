@@ -147,4 +147,24 @@ class LogsApiCallsTest extends TestCase
         $this->assertNull($log->response_payload);
         $this->assertSame(['amount' => 50000], $log->request_payload);
     }
+
+    public function test_no_log_row_created_when_logging_disabled(): void
+    {
+        config(['xendit.log_api_calls' => false]);
+
+        Http::fake(['*' => Http::response(['id' => 'pay_1'], 200)]);
+
+        app(XenditClient::class)->get('/payments/pay_1');
+
+        $this->assertSame(0, XenditApiLog::count());
+    }
+
+    public function test_log_row_created_when_logging_enabled_by_default(): void
+    {
+        Http::fake(['*' => Http::response(['id' => 'pay_1'], 200)]);
+
+        app(XenditClient::class)->get('/payments/pay_1');
+
+        $this->assertSame(1, XenditApiLog::count());
+    }
 }
