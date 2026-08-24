@@ -52,4 +52,58 @@ class LogsApiCallsTest extends TestCase
         $this->assertSame('DELETE', $log->method);
         $this->assertSame([], $log->request_payload);
     }
+
+    public function test_reference_id_resolves_from_id(): void
+    {
+        Http::fake(['*' => Http::response(['id' => 'rfd-1'], 200)]);
+
+        app(XenditClient::class)->post('/refunds', ['amount' => 1]);
+
+        $this->assertSame('rfd-1', XenditApiLog::first()->reference_id);
+    }
+
+    public function test_reference_id_resolves_from_payment_request_id(): void
+    {
+        Http::fake(['*' => Http::response(['payment_request_id' => 'pr-1'], 200)]);
+
+        app(XenditClient::class)->post('/v3/payment_requests', ['amount' => 1]);
+
+        $this->assertSame('pr-1', XenditApiLog::first()->reference_id);
+    }
+
+    public function test_reference_id_resolves_from_payment_session_id(): void
+    {
+        Http::fake(['*' => Http::response(['payment_session_id' => 'ps-1'], 201)]);
+
+        app(XenditClient::class)->post('/sessions', ['amount' => 1]);
+
+        $this->assertSame('ps-1', XenditApiLog::first()->reference_id);
+    }
+
+    public function test_reference_id_resolves_from_transaction_id(): void
+    {
+        Http::fake(['*' => Http::response(['transaction_id' => 'txn-1'], 200)]);
+
+        app(XenditClient::class)->get('/transactions/txn-1');
+
+        $this->assertSame('txn-1', XenditApiLog::first()->reference_id);
+    }
+
+    public function test_reference_id_resolves_from_xendit_id(): void
+    {
+        Http::fake(['*' => Http::response(['xendit_id' => 'xnd-1'], 200)]);
+
+        app(XenditClient::class)->get('/customers/xnd-1');
+
+        $this->assertSame('xnd-1', XenditApiLog::first()->reference_id);
+    }
+
+    public function test_reference_id_is_null_for_list_envelope_response(): void
+    {
+        Http::fake(['*' => Http::response(['data' => [], 'has_more' => false], 200)]);
+
+        app(XenditClient::class)->get('/transactions');
+
+        $this->assertNull(XenditApiLog::first()->reference_id);
+    }
 }
