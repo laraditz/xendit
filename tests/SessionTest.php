@@ -213,6 +213,27 @@ class SessionTest extends TestCase
         ]);
     }
 
+    public function test_create_maps_payment_request_id_from_response(): void
+    {
+        Http::fake([
+            'api.xendit.co/sessions' => Http::response([
+                'payment_session_id' => 'ps-pri',
+                'payment_link_url'   => 'https://checkout.xendit.co/sessions/ps-pri',
+                'expires_at'         => '2026-05-12T11:00:00Z',
+                'payment_request_id' => 'pr-created-1',
+            ], 201),
+        ]);
+
+        $session = \Laraditz\Xendit\Facades\Xendit::session()
+            ->referenceId('order-pri')
+            ->amount(100.00)
+            ->sessionType('PAY')
+            ->mode('PAYMENT_LINK')
+            ->create();
+
+        $this->assertEquals('pr-created-1', $session->payment_request_id);
+    }
+
     public function test_create_auto_generates_reference_id_when_not_set(): void
     {
         Http::fake([
