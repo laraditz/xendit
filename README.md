@@ -34,6 +34,7 @@ A Laravel package for seamless integration with Xendit payment gateway. Built fr
 - ✅ **[Payment Link](docs/payment-link.md)** - Create and manage payment links
 - ✅ **[Transaction](docs/transaction.md)** - Get and list transactions
 - ✅ **[Webhooks](docs/webhooks.md)** - All webhook events supported
+- ✅ **[Logging](docs/logging.md)** - Outbound API call audit trail with retention/pruning
 
 ## Requirements
 
@@ -582,6 +583,7 @@ For detailed documentation on each service, please refer to:
 - **[Payment Link](docs/payment-link.md)** - Generating shareable payment links for invoices
 - **[Transaction](docs/transaction.md)** - Querying and listing all transactions
 - **[Webhooks](docs/webhooks.md)** - Handling webhook events and notifications
+- **[Logging](docs/logging.md)** - Outbound API call audit trail with retention/pruning
 
 ## Testing
 
