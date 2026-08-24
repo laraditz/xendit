@@ -3,6 +3,8 @@
 namespace Laraditz\Xendit\Tests;
 
 use Laraditz\Xendit\Enums\SessionStatus;
+use Laraditz\Xendit\Events\XenditApiResponseReceived;
+use Laraditz\Xendit\Listeners\SyncSessionFromApiResponse;
 use Laraditz\Xendit\Models\XenditSession;
 
 class SessionSyncTest extends TestCase
@@ -76,5 +78,47 @@ class SessionSyncTest extends TestCase
 
         $this->assertSame(SessionStatus::Completed, $synced->status);
         $this->assertNotNull($synced->completed_at);
+    }
+
+    public function test_listener_syncs_on_matching_get_request(): void
+    {
+        XenditSession::create([
+            'reference_id' => 'ORDER-SYNC-1',
+            'payment_session_id' => 'ps-abc123',
+        ]);
+
+        $event = new XenditApiResponseReceived('GET', '/sessions/ps-abc123', [], [], $this->sampleResponse());
+
+        (new SyncSessionFromApiResponse())->handle($event);
+
+        $this->assertSame('pr-abc123', XenditSession::first()->payment_request_id);
+    }
+
+    public function test_listener_ignores_non_get_requests(): void
+    {
+        XenditSession::create([
+            'reference_id' => 'ORDER-SYNC-1',
+            'payment_session_id' => 'ps-abc123',
+        ]);
+
+        $event = new XenditApiResponseReceived('POST', '/sessions', [], [], $this->sampleResponse());
+
+        (new SyncSessionFromApiResponse())->handle($event);
+
+        $this->assertNull(XenditSession::first()->payment_request_id);
+    }
+
+    public function test_listener_ignores_non_matching_endpoints(): void
+    {
+        XenditSession::create([
+            'reference_id' => 'ORDER-SYNC-1',
+            'payment_session_id' => 'ps-abc123',
+        ]);
+
+        $event = new XenditApiResponseReceived('GET', '/sessions/ps-abc123/cancel', [], [], $this->sampleResponse());
+
+        (new SyncSessionFromApiResponse())->handle($event);
+
+        $this->assertNull(XenditSession::first()->payment_request_id);
     }
 }
