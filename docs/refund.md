@@ -74,6 +74,7 @@ $refund = Xendit::refund()->create([
 ### Example 1: Full Order Refund
 
 ```php
+use Laraditz\Xendit\Enums\RefundReason;
 use Laraditz\Xendit\Facades\Xendit;
 use Laraditz\Xendit\Models\XenditPayment;
 
@@ -92,10 +93,13 @@ public function refundOrder(Request $request, $orderId)
         ->where('status', PaymentStatus::Paid)
         ->firstOrFail();
 
+    // Validate the incoming reason against Xendit's allowed enum values
+    $reason = RefundReason::from($request->reason);
+
     // Create refund
     $refund = Xendit::refund()->create([
-        'payment_id' => $payment->xendit_id,
-        'reason' => $request->reason,
+        'payment_request_id' => $payment->xendit_id,
+        'reason' => $reason->value,
         'reference_id' => "REFUND-{$order->id}-" . now()->timestamp,
         'metadata' => [
             'order_id' => $order->id,
@@ -129,6 +133,7 @@ public function refundOrder(Request $request, $orderId)
 ### Example 2: Partial Refund for Returned Items
 
 ```php
+use Laraditz\Xendit\Enums\RefundReason;
 use Laraditz\Xendit\Facades\Xendit;
 
 public function processReturn(Request $request, $orderId)
@@ -157,15 +162,19 @@ public function processReturn(Request $request, $orderId)
     $payment = $order->payments()->where('status', PaymentStatus::Paid)->first();
 
     // Create partial refund
+    // Note: Xendit's reason enum has no dedicated "partial return" value —
+    // REQUESTED_BY_CUSTOMER is the closest fit; the human-readable detail
+    // lives in metadata instead.
     $refund = Xendit::refund()->create([
-        'payment_id' => $payment->xendit_id,
+        'payment_request_id' => $payment->xendit_id,
         'amount' => $refundAmount,
-        'reason' => 'Partial return - customer returned items',
+        'reason' => RefundReason::RequestedByCustomer->value,
         'reference_id' => "RETURN-{$order->id}-" . now()->timestamp,
         'metadata' => [
             'order_id' => $order->id,
             'returned_items' => $returnedItemDetails,
             'partial_refund' => true,
+            'notes' => 'Partial return - customer returned items',
         ],
     ]);
 
@@ -185,6 +194,7 @@ public function processReturn(Request $request, $orderId)
 ### Example 3: Automatic Refund on Cancellation
 
 ```php
+use Laraditz\Xendit\Enums\RefundReason;
 use Laraditz\Xendit\Facades\Xendit;
 use App\Models\Order;
 
@@ -211,8 +221,8 @@ class CancelOrderListener
         try {
             // Automatically process refund
             $refund = Xendit::refund()->create([
-                'payment_id' => $payment->xendit_id,
-                'reason' => 'Order cancelled by customer',
+                'payment_request_id' => $payment->xendit_id,
+                'reason' => RefundReason::Cancellation->value,
                 'reference_id' => "CANCEL-{$order->id}-" . now()->timestamp,
                 'metadata' => [
                     'order_id' => $order->id,
@@ -279,8 +289,10 @@ class RefundController extends Controller
         $payment = $order->payments()->paid()->first();
 
         // Process refund with Xendit
+        // $refundRequest->reason is validated against RefundReason at
+        // creation time (see Example 6), so it's safe to pass through here.
         $refund = Xendit::refund()->create([
-            'payment_id' => $payment->xendit_id,
+            'payment_request_id' => $payment->xendit_id,
             'amount' => $refundRequest->amount,
             'reason' => $refundRequest->reason,
             'reference_id' => "REFUND-{$refundRequest->id}",
@@ -416,6 +428,8 @@ class ProcessRefundSuccess
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Enum;
+use Laraditz\Xendit\Enums\RefundReason;
 use App\Models\Order;
 
 class CustomerRefundController extends Controller
@@ -438,7 +452,7 @@ class CustomerRefundController extends Controller
     public function store(Request $request, $orderId)
     {
         $request->validate([
-            'reason' => 'required|string|max:500',
+            'reason' => ['required', new Enum(RefundReason::class)],
             'items' => 'nullable|array',
             'items.*' => 'exists:order_items,id',
         ]);
