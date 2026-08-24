@@ -7,6 +7,7 @@ use Laraditz\Xendit\Events\PaymentFailed;
 use Laraditz\Xendit\Events\PaymentPaid;
 use Laraditz\Xendit\Events\PaymentTokenActivated;
 use Laraditz\Xendit\Events\PaymentTokenCreated;
+use Laraditz\Xendit\Events\RefundFailed;
 use Laraditz\Xendit\Events\RefundSucceeded;
 use Laraditz\Xendit\Events\SessionCompleted;
 use Laraditz\Xendit\Events\SessionExpired;
@@ -78,6 +79,7 @@ class WebhookHandler
 
             // Refund webhooks
             str_contains($eventType, 'refund.succeeded') => $this->handleRefundSucceeded($payload),
+            str_contains($eventType, 'refund.failed') => $this->handleRefundFailed($payload),
 
             // Session webhooks
             str_contains($eventType, 'payment_session.completed') => $this->handleSessionCompleted($payload),
@@ -260,6 +262,16 @@ class WebhookHandler
         XenditRefund::syncFromApiResponse(data_get($payload, 'data', []));
 
         event(new RefundSucceeded($payload));
+    }
+
+    /**
+     * Handle refund failed webhook
+     */
+    protected function handleRefundFailed(array $payload): void
+    {
+        XenditRefund::syncFromApiResponse(data_get($payload, 'data', []));
+
+        event(new RefundFailed($payload));
     }
 
     protected function handleSessionCompleted(array $payload): void

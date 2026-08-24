@@ -67,4 +67,26 @@ class RefundWebhookTest extends TestCase
             return $event->payload === $payload;
         });
     }
+
+    public function test_refund_failed_webhook_syncs_and_dispatches_full_envelope(): void
+    {
+        Event::fake([RefundFailed::class]);
+
+        $payload = $this->envelope('refund.failed', [
+            'id' => 'rfd-webhook-2',
+            'status' => 'FAILED',
+            'failure_code' => 'INSUFFICIENT_BALANCE',
+        ]);
+
+        (new WebhookHandler())->handle($payload);
+
+        $refund = XenditRefund::where('refund_id', 'rfd-webhook-2')->first();
+        $this->assertNotNull($refund);
+        $this->assertSame('FAILED', $refund->getRawOriginal('status'));
+        $this->assertSame('INSUFFICIENT_BALANCE', $refund->getRawOriginal('failure_code'));
+
+        Event::assertDispatched(RefundFailed::class, function ($event) use ($payload) {
+            return $event->payload === $payload;
+        });
+    }
 }
