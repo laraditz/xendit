@@ -405,6 +405,63 @@ class SessionTest extends TestCase
         Event::assertDispatched(\Laraditz\Xendit\Events\SessionCompleted::class);
     }
 
+    public function test_webhook_handler_syncs_payment_identifiers_on_session_completed(): void
+    {
+        Event::fake();
+
+        $session = \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id'       => 'order-webhook-ids',
+            'payment_session_id' => 'ps-ids1',
+            'amount'             => 100.00,
+            'session_type'       => 'PAY',
+            'mode'               => 'PAYMENT_LINK',
+        ]);
+
+        $handler = app(\Laraditz\Xendit\Support\WebhookHandler::class);
+        $handler->handle([
+            'event'       => 'payment_session.completed',
+            'business_id' => 'biz-123',
+            'created'     => now()->toIso8601String(),
+            'data'        => [
+                'payment_session_id' => 'ps-ids1',
+                'reference_id'       => 'order-webhook-ids',
+                'status'             => 'COMPLETED',
+                'payment_id'         => 'py-ids1',
+                'payment_token_id'   => 'pt-ids1',
+                'payment_request_id' => 'pr-ids1',
+            ],
+        ]);
+
+        $fresh = $session->fresh();
+        $this->assertEquals(\Laraditz\Xendit\Enums\SessionStatus::Completed, $fresh->status);
+        $this->assertEquals('py-ids1', $fresh->payment_id);
+        $this->assertEquals('pt-ids1', $fresh->payment_token_id);
+        $this->assertEquals('pr-ids1', $fresh->payment_request_id);
+
+        Event::assertDispatched(\Laraditz\Xendit\Events\SessionCompleted::class, function ($event) use ($fresh) {
+            return $event->session->is($fresh);
+        });
+    }
+
+    public function test_webhook_handler_does_not_dispatch_completed_when_no_local_session(): void
+    {
+        Event::fake();
+
+        $handler = app(\Laraditz\Xendit\Support\WebhookHandler::class);
+        $handler->handle([
+            'event'       => 'payment_session.completed',
+            'business_id' => 'biz-123',
+            'created'     => now()->toIso8601String(),
+            'data'        => [
+                'payment_session_id' => 'ps-unknown',
+                'reference_id'       => 'order-unknown',
+                'status'             => 'COMPLETED',
+            ],
+        ]);
+
+        Event::assertNotDispatched(\Laraditz\Xendit\Events\SessionCompleted::class);
+    }
+
     public function test_webhook_handler_marks_session_expired(): void
     {
         Event::fake();
