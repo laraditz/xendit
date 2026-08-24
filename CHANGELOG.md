@@ -4,6 +4,21 @@ All notable changes to `xendit` will be documented in this file
 
 ## Unreleased
 
+### Breaking
+
+- Removed `RefundCreated` event and the `refund.created` webhook route case — Xendit's webhook `event` enum never actually contains `refund.created` (only `refund.succeeded`/`refund.failed` are real), so this was dead code that never fired in production
+
+### Added
+
+- `RefundFailed` event, dispatched on the (previously unhandled) `refund.failed` webhook
+- `RefundReason`, `RefundStatus`, `RefundFailureCode` enums mirroring Xendit's real refund API values
+- `xendit_refunds` table and `XenditRefund` model — `refund.succeeded`/`refund.failed` webhooks now auto-sync a local row via `XenditRefund::syncFromApiResponse()`, resolving `payment_id` by matching the payload's `payment_request_id` against `xendit_payments.xendit_id`
+- `XenditPayment::refunds(): HasMany`
+
+### Fixed
+
+- `docs/refund.md` documented `payment_id` as the refund create param and free-text `reason` values; Xendit's real API requires `payment_request_id` and constrains `reason` to a fixed enum (`FRAUDULENT`, `DUPLICATE`, `REQUESTED_BY_CUSTOMER`, `CANCELLATION`, `OTHERS`) — corrected across `docs/refund.md`, `docs/webhooks.md`, and `README.md`, including response field names (`created`/`updated`, not `created_at`/`updated_at`) and webhook payload access (`$event->payload['data']`, not `$event->payload` flat)
+
 ## 1.1.0 - 2026-07-20
 
 ### Breaking

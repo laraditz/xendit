@@ -55,8 +55,8 @@ The package dispatches Laravel events for all webhook notifications:
 
 | Event | Description | Triggered When |
 |-------|-------------|----------------|
-| `RefundCreated` | Refund initiated | Refund request submitted |
-| `RefundSucceeded` | Refund completed | Refund processed successfully |
+| `RefundSucceeded` | Refund completed | Webhook `refund.succeeded` received |
+| `RefundFailed` | Refund failed | Webhook `refund.failed` received |
 
 ### Session Events
 
@@ -92,8 +92,8 @@ use Laraditz\Xendit\Events\PaymentExpired;
 use Laraditz\Xendit\Events\PaymentFailed;
 use Laraditz\Xendit\Events\PaymentTokenCreated;
 use Laraditz\Xendit\Events\PaymentTokenActivated;
-use Laraditz\Xendit\Events\RefundCreated;
 use Laraditz\Xendit\Events\RefundSucceeded;
+use Laraditz\Xendit\Events\RefundFailed;
 use Laraditz\Xendit\Events\SessionCreated;
 use Laraditz\Xendit\Events\SessionCompleted;
 use Laraditz\Xendit\Events\SessionExpired;
@@ -120,6 +120,9 @@ class EventServiceProvider extends ServiceProvider
         RefundSucceeded::class => [
             ProcessRefund::class,
             SendRefundConfirmation::class,
+        ],
+        RefundFailed::class => [
+            NotifyRefundFailure::class,
         ],
         PaymentTokenCreated::class => [
             LogPaymentToken::class,
@@ -312,7 +315,8 @@ class ProcessRefund
 {
     public function handle(RefundSucceeded $event)
     {
-        $refundData = $event->payload;
+        // $event->payload is the full webhook envelope; refund fields live under 'data'
+        $refundData = $event->payload['data'];
 
         // Get order from metadata
         $orderId = $refundData['metadata']['order_id'] ?? null;
@@ -464,17 +468,50 @@ $event->payment; // XenditPayment model instance
 ### RefundSucceeded Event
 
 ```php
-$event->payload; // Array of refund data
+$event->payload; // Full webhook envelope: {event, business_id, created, data}
+$event->payload['data']; // The refund object
 
 // Example payload structure
 [
-    'id' => 'rfd_12345678',
-    'payment_id' => 'pay_12345678',
-    'amount' => 100000,
-    'currency' => 'MYR',
-    'status' => 'SUCCEEDED',
-    'reason' => 'Customer request',
-    'metadata' => [...],
+    'event' => 'refund.succeeded',
+    'business_id' => 'biz-12345678',
+    'created' => '2026-06-08T02:17:33.376Z',
+    'data' => [
+        'id' => 'rfd-12345678',
+        'payment_request_id' => 'pr-12345678',
+        'amount' => 100000,
+        'currency' => 'MYR',
+        'status' => 'SUCCEEDED',
+        'reason' => 'REQUESTED_BY_CUSTOMER',
+        'failure_code' => null,
+        'refund_fee_amount' => 0,
+        'metadata' => [...],
+    ],
+]
+```
+
+### RefundFailed Event
+
+```php
+$event->payload; // Full webhook envelope: {event, business_id, created, data}
+$event->payload['data']; // The refund object
+
+// Example payload structure
+[
+    'event' => 'refund.failed',
+    'business_id' => 'biz-12345678',
+    'created' => '2026-06-08T02:17:33.376Z',
+    'data' => [
+        'id' => 'rfd-12345678',
+        'payment_request_id' => 'pr-12345678',
+        'amount' => 100000,
+        'currency' => 'MYR',
+        'status' => 'FAILED',
+        'reason' => 'REQUESTED_BY_CUSTOMER',
+        'failure_code' => 'INSUFFICIENT_BALANCE',
+        'refund_fee_amount' => null,
+        'metadata' => [...],
+    ],
 ]
 ```
 
@@ -517,7 +554,7 @@ $session->xenditCustomer;     // XenditCustomer model (if customer_id set)
 ### WebhookReceived Event
 
 ```php
-$event->eventType; // String: 'payment.succeeded', 'refund.created', etc.
+$event->eventType; // String: 'payment.succeeded', 'refund.succeeded', etc.
 $event->payload;   // Array: Full webhook payload
 ```
 

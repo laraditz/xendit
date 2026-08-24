@@ -5,7 +5,7 @@ namespace Laraditz\Xendit\Events;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class RefundCreated
+class RefundFailed
 {
     use Dispatchable, SerializesModels;
 

@@ -3,6 +3,7 @@
 namespace Laraditz\Xendit\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -67,6 +68,14 @@ class XenditPayment extends Model
     public function transactions(): MorphMany
     {
         return $this->morphMany(XenditTransaction::class, 'source');
+    }
+
+    /**
+     * Payment has many refunds
+     */
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(XenditRefund::class, 'payment_id');
     }
 
     /**

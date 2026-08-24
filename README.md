@@ -292,13 +292,14 @@ Xendit::session()->cancel($session->payment_session_id);
 ### Processing Refunds
 
 ```php
+use Laraditz\Xendit\Enums\RefundReason;
 use Laraditz\Xendit\Facades\Xendit;
 
 // Create a refund
 $refund = Xendit::refund()->create([
-    'payment_id' => $paymentId,
+    'payment_request_id' => $paymentRequestId,
     'amount' => 50000,
-    'reason' => 'Customer request',
+    'reason' => RefundReason::RequestedByCustomer->value,
 ]);
 ```
 
@@ -451,8 +452,8 @@ use Laraditz\Xendit\Events\PaymentExpired;
 use Laraditz\Xendit\Events\PaymentFailed;
 use Laraditz\Xendit\Events\PaymentTokenCreated;
 use Laraditz\Xendit\Events\PaymentTokenActivated;
-use Laraditz\Xendit\Events\RefundCreated;
 use Laraditz\Xendit\Events\RefundSucceeded;
+use Laraditz\Xendit\Events\RefundFailed;
 use Laraditz\Xendit\Events\SessionCreated;
 use Laraditz\Xendit\Events\SessionCompleted;
 use Laraditz\Xendit\Events\SessionExpired;
@@ -480,11 +481,11 @@ protected $listen = [
     ],
 
     // Refund events
-    RefundCreated::class => [
-        LogRefundRequest::class,
-    ],
     RefundSucceeded::class => [
         ProcessRefund::class,
+    ],
+    RefundFailed::class => [
+        NotifyRefundFailure::class,
     ],
 
     // Session events
@@ -539,10 +540,11 @@ class ProcessRefund
 {
     public function handle(RefundSucceeded $event)
     {
-        $refundData = $event->payload;
+        // $event->payload is the full webhook envelope; refund fields live under 'data'
+        $refundData = $event->payload['data'];
 
         // Process refund
-        $order = Order::where('payment_id', $refundData['payment_id'])->first();
+        $order = Order::where('payment_id', $refundData['payment_request_id'])->first();
         $order->markAsRefunded();
     }
 }
