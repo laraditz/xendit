@@ -117,4 +117,40 @@ class XenditSession extends Model
     {
         return $query->where('split_rule_id', $ruleId);
     }
+
+    /**
+     * Create or update a local session record from a Xendit Session API/webhook response.
+     */
+    public static function syncFromApiResponse(array $data): ?self
+    {
+        $referenceId = data_get($data, 'reference_id');
+
+        if (!$referenceId) {
+            return null;
+        }
+
+        $session = static::matchingReferenceId($referenceId)->first();
+
+        if (!$session) {
+            return null;
+        }
+
+        $status = data_get($data, 'status');
+
+        $session->fill([
+            'status' => $status ? SessionStatus::fromXenditStatus($status) : $session->status,
+            'payment_id' => data_get($data, 'payment_id'),
+            'payment_token_id' => data_get($data, 'payment_token_id'),
+            'payment_request_id' => data_get($data, 'payment_request_id'),
+            'session_details' => $data,
+        ]);
+
+        if ($session->status === SessionStatus::Completed) {
+            $session->completed_at = now();
+        }
+
+        $session->save();
+
+        return $session;
+    }
 }

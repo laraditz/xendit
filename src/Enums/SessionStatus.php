@@ -9,6 +9,16 @@ enum SessionStatus: int
     case Expired   = 3;
     case Canceled  = 4;
 
+    public static function fromXenditStatus(string $status): self
+    {
+        return match (strtoupper($status)) {
+            'ACTIVE' => self::Active,
+            'COMPLETED' => self::Completed,
+            'EXPIRED' => self::Expired,
+            'CANCELED', 'CANCELLED' => self::Canceled,
+        };
+    }
+
     public function isActive(): bool
     {
         return $this === self::Active;
