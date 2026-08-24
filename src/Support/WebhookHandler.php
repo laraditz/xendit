@@ -12,6 +12,7 @@ use Laraditz\Xendit\Events\SessionCompleted;
 use Laraditz\Xendit\Events\SessionExpired;
 use Laraditz\Xendit\Events\WebhookReceived;
 use Laraditz\Xendit\Models\XenditPayment;
+use Laraditz\Xendit\Models\XenditRefund;
 use Laraditz\Xendit\Models\XenditSession;
 use Laraditz\Xendit\Models\XenditWebhookLog;
 
@@ -256,6 +257,8 @@ class WebhookHandler
      */
     protected function handleRefundSucceeded(array $payload): void
     {
+        XenditRefund::syncFromApiResponse(data_get($payload, 'data', []));
+
         event(new RefundSucceeded($payload));
     }
 
