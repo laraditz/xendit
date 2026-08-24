@@ -2,6 +2,7 @@
 
 namespace Laraditz\Xendit\Tests;
 
+use Laraditz\Xendit\Enums\RefundFailureCode;
 use Laraditz\Xendit\Enums\RefundReason;
 use Laraditz\Xendit\Enums\RefundStatus;
 
@@ -37,5 +38,14 @@ class RefundTest extends TestCase
 
         $this->assertTrue(RefundStatus::Cancelled->isCancelled());
         $this->assertFalse(RefundStatus::Pending->isCancelled());
+    }
+
+    public function test_refund_failure_code_enum_values(): void
+    {
+        $this->assertSame('ACCOUNT_ACCESS_BLOCKED', RefundFailureCode::AccountAccessBlocked->value);
+        $this->assertSame('ACCOUNT_NOT_FOUND', RefundFailureCode::AccountNotFound->value);
+        $this->assertSame('DUPLICATE_ERROR', RefundFailureCode::DuplicateError->value);
+        $this->assertSame('INSUFFICIENT_BALANCE', RefundFailureCode::InsufficientBalance->value);
+        $this->assertSame('REFUND_FAILED', RefundFailureCode::RefundFailed->value);
     }
 }
