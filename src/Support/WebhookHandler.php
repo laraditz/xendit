@@ -7,7 +7,6 @@ use Laraditz\Xendit\Events\PaymentFailed;
 use Laraditz\Xendit\Events\PaymentPaid;
 use Laraditz\Xendit\Events\PaymentTokenActivated;
 use Laraditz\Xendit\Events\PaymentTokenCreated;
-use Laraditz\Xendit\Events\RefundCreated;
 use Laraditz\Xendit\Events\RefundSucceeded;
 use Laraditz\Xendit\Events\SessionCompleted;
 use Laraditz\Xendit\Events\SessionExpired;
@@ -77,7 +76,6 @@ class WebhookHandler
             str_contains($eventType, 'payment_token.activated') => $this->handlePaymentTokenActivated($payload),
 
             // Refund webhooks
-            str_contains($eventType, 'refund.created') => $this->handleRefundCreated($payload),
             str_contains($eventType, 'refund.succeeded') => $this->handleRefundSucceeded($payload),
 
             // Session webhooks
@@ -251,14 +249,6 @@ class WebhookHandler
     protected function handlePaymentTokenActivated(array $payload): void
     {
         event(new PaymentTokenActivated($payload));
-    }
-
-    /**
-     * Handle refund created webhook
-     */
-    protected function handleRefundCreated(array $payload): void
-    {
-        event(new RefundCreated($payload));
     }
 
     /**
