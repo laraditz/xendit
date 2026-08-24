@@ -55,6 +55,10 @@ class XenditRefund extends Model
     {
         $refundId = data_get($data, 'id');
 
+        if (!$refundId) {
+            return null;
+        }
+
         $refund = static::firstOrNew(['refund_id' => $refundId]);
 
         $paymentRequestId = data_get($data, 'payment_request_id');

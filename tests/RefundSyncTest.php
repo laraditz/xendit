@@ -70,4 +70,28 @@ class RefundSyncTest extends TestCase
 
         $this->assertNull($refund->payment_id);
     }
+
+    public function test_syncing_twice_updates_same_row(): void
+    {
+        XenditRefund::syncFromApiResponse($this->sampleResponse(['status' => 'PENDING']));
+
+        $this->assertSame(1, XenditRefund::count());
+
+        $updated = XenditRefund::syncFromApiResponse($this->sampleResponse([
+            'status' => 'SUCCEEDED',
+            'amount' => 750,
+        ]));
+
+        $this->assertSame(1, XenditRefund::count());
+        $this->assertEquals(750, $updated->amount);
+        $this->assertSame(RefundStatus::Succeeded, $updated->status);
+    }
+
+    public function test_returns_null_when_id_missing(): void
+    {
+        $refund = XenditRefund::syncFromApiResponse($this->sampleResponse(['id' => null]));
+
+        $this->assertNull($refund);
+        $this->assertSame(0, XenditRefund::count());
+    }
 }
