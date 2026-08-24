@@ -525,27 +525,26 @@ class CustomerRefundController extends Controller
 
 ## Refund Status Values
 
-Xendit uses the following status values for refunds:
+Xendit uses the following status values for refunds (`RefundStatus` enum):
 
 | Status | Description |
 |--------|-------------|
 | `PENDING` | Refund is being processed |
 | `SUCCEEDED` | Refund completed successfully |
 | `FAILED` | Refund failed |
+| `CANCELLED` | Refund was cancelled |
 
 ## Refund Reasons
 
-Common refund reasons to use:
+`reason` is a required field and must be one of Xendit's fixed enum values (`RefundReason`) — free text is rejected by the API:
 
-- `Customer requested refund`
-- `Duplicate payment`
-- `Fraudulent transaction`
-- `Order cancelled`
-- `Item out of stock`
-- `Partial return`
-- `Wrong item shipped`
-- `Damaged item`
-- `Service not provided`
+| Reason | Description |
+|--------|-------------|
+| `FRAUDULENT` | Payment was fraudulent |
+| `DUPLICATE` | Duplicate payment |
+| `REQUESTED_BY_CUSTOMER` | Customer requested the refund |
+| `CANCELLATION` | Order/booking was cancelled |
+| `OTHERS` | Any other reason not covered above |
 
 ## Best Practices
 
