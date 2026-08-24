@@ -362,7 +362,9 @@ class ProcessRefundSuccess
 {
     public function handle(RefundSucceeded $event)
     {
-        $refundData = $event->payload;
+        // $event->payload is the full webhook envelope ({event, business_id,
+        // created, data}); the refund fields live under 'data'.
+        $refundData = $event->payload['data'];
 
         // Find the order
         $orderId = $refundData['metadata']['order_id'] ?? null;
