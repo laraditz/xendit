@@ -516,6 +516,22 @@ class SessionTest extends TestCase
         $this->assertContains('split_rule_id', $columns);
     }
 
+    public function test_xendit_session_has_payment_request_id_column(): void
+    {
+        $columns = \Illuminate\Support\Facades\Schema::getColumnListing('xendit_sessions');
+        $this->assertContains('payment_request_id', $columns);
+    }
+
+    public function test_payment_request_id_is_mass_assignable(): void
+    {
+        $session = \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id'        => 'ref-pri-1',
+            'payment_request_id'  => 'pr-abc123',
+        ]);
+
+        $this->assertEquals('pr-abc123', $session->fresh()->payment_request_id);
+    }
+
     public function test_xendit_session_scope_for_user_id(): void
     {
         \Laraditz\Xendit\Models\XenditSession::create([

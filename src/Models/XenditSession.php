@@ -26,7 +26,7 @@ class XenditSession extends Model
         'customer_id', 'customer',
         'payment_link_url', 'components_sdk_key',
         'success_return_url', 'cancel_return_url',
-        'payment_id', 'payment_token_id',
+        'payment_id', 'payment_token_id', 'payment_request_id',
         'metadata', 'session_details',
         'for_user_id', 'split_rule_id',
         'expires_at', 'completed_at', 'canceled_at',
