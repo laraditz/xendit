@@ -89,4 +89,29 @@ return [
     |
     */
     'webhook_url' => env('XENDIT_WEBHOOK_URL', '/xendit/webhook'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Call Logging
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, every outbound call XenditClient makes is recorded in the
+    | xendit_api_logs table (method, endpoint, request/response body, status,
+    | duration). Disable to skip logging entirely.
+    |
+    */
+    'log_api_calls' => env('XENDIT_LOG_API_CALLS', true),
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Log Retention
+    |--------------------------------------------------------------------------
+    |
+    | Number of days to keep xendit_api_logs rows. Rows older than this are
+    | eligible for deletion via Laravel's built-in `php artisan model:prune`
+    | command (XenditApiLog uses the Prunable trait) — no extra scheduling
+    | needed beyond whatever your app already runs for model:prune.
+    |
+    */
+    'api_log_retention_days' => env('XENDIT_API_LOG_RETENTION_DAYS', 30),
 ];
