@@ -16,29 +16,31 @@ Create a refund for a completed payment.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `payment_id` | string | Yes | Payment ID to refund |
+| `payment_request_id` | string | Yes | Xendit Payment Request ID to refund (`payment_id` is deprecated by Xendit) |
+| `currency` | string | No | ISO 4217 currency code |
 | `amount` | number | No | Refund amount (defaults to full amount) |
-| `reason` | string | Yes | Reason for refund |
+| `reason` | string | Yes | One of `RefundReason`: `FRAUDULENT`, `DUPLICATE`, `REQUESTED_BY_CUSTOMER`, `CANCELLATION`, `OTHERS` |
 | `reference_id` | string | No | Your unique reference ID |
 | `metadata` | object | No | Custom metadata |
 
 **Example:**
 
 ```php
+use Laraditz\Xendit\Enums\RefundReason;
 use Laraditz\Xendit\Facades\Xendit;
 
 // Full refund
 $refund = Xendit::refund()->create([
-    'payment_id' => 'pay_12345678',
-    'reason' => 'Customer requested refund',
+    'payment_request_id' => 'pr-12345678',
+    'reason' => RefundReason::RequestedByCustomer->value,
     'reference_id' => 'REFUND-001',
 ]);
 
 // Partial refund
 $refund = Xendit::refund()->create([
-    'payment_id' => 'pay_12345678',
+    'payment_request_id' => 'pr-12345678',
     'amount' => 50000, // Refund half
-    'reason' => 'Partial return',
+    'reason' => RefundReason::RequestedByCustomer->value,
     'reference_id' => 'REFUND-002',
     'metadata' => [
         'order_id' => 123,
@@ -48,14 +50,22 @@ $refund = Xendit::refund()->create([
 
 // Response structure
 [
-    'id' => 'rfd_12345678',
-    'payment_id' => 'pay_12345678',
-    'amount' => 50000,
+    'id' => 'rfd-12345678',
+    'payment_request_id' => 'pr-12345678',
+    'payment_id' => null, // deprecated
+    'invoice_id' => null, // deprecated
+    'payment_method_type' => 'EWALLET',
+    'reference_id' => 'REFUND-002',
+    'channel_code' => 'GCASH',
     'currency' => 'MYR',
+    'amount' => 50000,
     'status' => 'PENDING',
-    'reason' => 'Partial return',
-    'created_at' => '2024-01-15T10:00:00Z',
-    ...
+    'reason' => 'REQUESTED_BY_CUSTOMER',
+    'failure_code' => null,
+    'refund_fee_amount' => 0,
+    'metadata' => [...],
+    'created' => '2024-01-15T10:00:00Z',
+    'updated' => '2024-01-15T10:00:00Z',
 ]
 ```
 
