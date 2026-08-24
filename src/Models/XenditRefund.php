@@ -47,4 +47,34 @@ class XenditRefund extends Model
     {
         return $this->belongsTo(XenditPayment::class, 'payment_id');
     }
+
+    /**
+     * Create or update a local refund record from a Xendit Refund API response.
+     */
+    public static function syncFromApiResponse(array $data): ?self
+    {
+        $refundId = data_get($data, 'id');
+
+        $refund = static::firstOrNew(['refund_id' => $refundId]);
+
+        $paymentRequestId = data_get($data, 'payment_request_id');
+
+        $refund->fill([
+            'payment_id' => XenditPayment::where('xendit_id', $paymentRequestId)->value('id'),
+            'payment_request_id' => $paymentRequestId,
+            'reference_id' => data_get($data, 'reference_id'),
+            'currency' => data_get($data, 'currency'),
+            'amount' => data_get($data, 'amount'),
+            'status' => data_get($data, 'status'),
+            'reason' => data_get($data, 'reason'),
+            'failure_code' => data_get($data, 'failure_code'),
+            'refund_fee_amount' => data_get($data, 'refund_fee_amount'),
+            'metadata' => data_get($data, 'metadata'),
+            'raw_response' => $data,
+        ]);
+
+        $refund->save();
+
+        return $refund;
+    }
 }
