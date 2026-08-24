@@ -106,4 +106,23 @@ class LogsApiCallsTest extends TestCase
 
         $this->assertNull(XenditApiLog::first()->reference_id);
     }
+
+    public function test_non_2xx_response_still_logs_before_exception_propagates(): void
+    {
+        Http::fake(['*' => Http::response(['message' => 'invalid amount'], 400)]);
+
+        try {
+            app(XenditClient::class)->post('/refunds', ['amount' => -1]);
+            $this->fail('Expected an exception to be thrown.');
+        } catch (\Laraditz\Xendit\Exceptions\ValidationException $e) {
+            // expected
+        }
+
+        $log = XenditApiLog::first();
+
+        $this->assertNotNull($log);
+        $this->assertSame(400, $log->http_status);
+        $this->assertSame(['message' => 'invalid amount'], $log->response_payload);
+        $this->assertSame(['amount' => -1], $log->request_payload);
+    }
 }
