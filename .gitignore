@@ -1,3 +1,4 @@
 /vendor
 /CLAUDE.md
 /.phpunit.cache
+/.phpunit.result.cache

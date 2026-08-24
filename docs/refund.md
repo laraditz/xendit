@@ -16,29 +16,31 @@ Create a refund for a completed payment.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `payment_id` | string | Yes | Payment ID to refund |
+| `payment_request_id` | string | Yes | Xendit Payment Request ID to refund (`payment_id` is deprecated by Xendit) |
+| `currency` | string | No | ISO 4217 currency code |
 | `amount` | number | No | Refund amount (defaults to full amount) |
-| `reason` | string | Yes | Reason for refund |
+| `reason` | string | Yes | One of `RefundReason`: `FRAUDULENT`, `DUPLICATE`, `REQUESTED_BY_CUSTOMER`, `CANCELLATION`, `OTHERS` |
 | `reference_id` | string | No | Your unique reference ID |
 | `metadata` | object | No | Custom metadata |
 
 **Example:**
 
 ```php
+use Laraditz\Xendit\Enums\RefundReason;
 use Laraditz\Xendit\Facades\Xendit;
 
 // Full refund
 $refund = Xendit::refund()->create([
-    'payment_id' => 'pay_12345678',
-    'reason' => 'Customer requested refund',
+    'payment_request_id' => 'pr-12345678',
+    'reason' => RefundReason::RequestedByCustomer->value,
     'reference_id' => 'REFUND-001',
 ]);
 
 // Partial refund
 $refund = Xendit::refund()->create([
-    'payment_id' => 'pay_12345678',
+    'payment_request_id' => 'pr-12345678',
     'amount' => 50000, // Refund half
-    'reason' => 'Partial return',
+    'reason' => RefundReason::RequestedByCustomer->value,
     'reference_id' => 'REFUND-002',
     'metadata' => [
         'order_id' => 123,
@@ -48,14 +50,22 @@ $refund = Xendit::refund()->create([
 
 // Response structure
 [
-    'id' => 'rfd_12345678',
-    'payment_id' => 'pay_12345678',
-    'amount' => 50000,
+    'id' => 'rfd-12345678',
+    'payment_request_id' => 'pr-12345678',
+    'payment_id' => null, // deprecated
+    'invoice_id' => null, // deprecated
+    'payment_method_type' => 'EWALLET',
+    'reference_id' => 'REFUND-002',
+    'channel_code' => 'GCASH',
     'currency' => 'MYR',
+    'amount' => 50000,
     'status' => 'PENDING',
-    'reason' => 'Partial return',
-    'created_at' => '2024-01-15T10:00:00Z',
-    ...
+    'reason' => 'REQUESTED_BY_CUSTOMER',
+    'failure_code' => null,
+    'refund_fee_amount' => 0,
+    'metadata' => [...],
+    'created' => '2024-01-15T10:00:00Z',
+    'updated' => '2024-01-15T10:00:00Z',
 ]
 ```
 
@@ -64,6 +74,7 @@ $refund = Xendit::refund()->create([
 ### Example 1: Full Order Refund
 
 ```php
+use Laraditz\Xendit\Enums\RefundReason;
 use Laraditz\Xendit\Facades\Xendit;
 use Laraditz\Xendit\Models\XenditPayment;
 
@@ -82,10 +93,13 @@ public function refundOrder(Request $request, $orderId)
         ->where('status', PaymentStatus::Paid)
         ->firstOrFail();
 
+    // Validate the incoming reason against Xendit's allowed enum values
+    $reason = RefundReason::from($request->reason);
+
     // Create refund
     $refund = Xendit::refund()->create([
-        'payment_id' => $payment->xendit_id,
-        'reason' => $request->reason,
+        'payment_request_id' => $payment->xendit_id,
+        'reason' => $reason->value,
         'reference_id' => "REFUND-{$order->id}-" . now()->timestamp,
         'metadata' => [
             'order_id' => $order->id,
@@ -119,6 +133,7 @@ public function refundOrder(Request $request, $orderId)
 ### Example 2: Partial Refund for Returned Items
 
 ```php
+use Laraditz\Xendit\Enums\RefundReason;
 use Laraditz\Xendit\Facades\Xendit;
 
 public function processReturn(Request $request, $orderId)
@@ -147,15 +162,19 @@ public function processReturn(Request $request, $orderId)
     $payment = $order->payments()->where('status', PaymentStatus::Paid)->first();
 
     // Create partial refund
+    // Note: Xendit's reason enum has no dedicated "partial return" value —
+    // REQUESTED_BY_CUSTOMER is the closest fit; the human-readable detail
+    // lives in metadata instead.
     $refund = Xendit::refund()->create([
-        'payment_id' => $payment->xendit_id,
+        'payment_request_id' => $payment->xendit_id,
         'amount' => $refundAmount,
-        'reason' => 'Partial return - customer returned items',
+        'reason' => RefundReason::RequestedByCustomer->value,
         'reference_id' => "RETURN-{$order->id}-" . now()->timestamp,
         'metadata' => [
             'order_id' => $order->id,
             'returned_items' => $returnedItemDetails,
             'partial_refund' => true,
+            'notes' => 'Partial return - customer returned items',
         ],
     ]);
 
@@ -175,6 +194,7 @@ public function processReturn(Request $request, $orderId)
 ### Example 3: Automatic Refund on Cancellation
 
 ```php
+use Laraditz\Xendit\Enums\RefundReason;
 use Laraditz\Xendit\Facades\Xendit;
 use App\Models\Order;
 
@@ -201,8 +221,8 @@ class CancelOrderListener
         try {
             // Automatically process refund
             $refund = Xendit::refund()->create([
-                'payment_id' => $payment->xendit_id,
-                'reason' => 'Order cancelled by customer',
+                'payment_request_id' => $payment->xendit_id,
+                'reason' => RefundReason::Cancellation->value,
                 'reference_id' => "CANCEL-{$order->id}-" . now()->timestamp,
                 'metadata' => [
                     'order_id' => $order->id,
@@ -269,8 +289,10 @@ class RefundController extends Controller
         $payment = $order->payments()->paid()->first();
 
         // Process refund with Xendit
+        // $refundRequest->reason is validated against RefundReason at
+        // creation time (see Example 6), so it's safe to pass through here.
         $refund = Xendit::refund()->create([
-            'payment_id' => $payment->xendit_id,
+            'payment_request_id' => $payment->xendit_id,
             'amount' => $refundRequest->amount,
             'reason' => $refundRequest->reason,
             'reference_id' => "REFUND-{$refundRequest->id}",
@@ -340,7 +362,9 @@ class ProcessRefundSuccess
 {
     public function handle(RefundSucceeded $event)
     {
-        $refundData = $event->payload;
+        // $event->payload is the full webhook envelope ({event, business_id,
+        // created, data}); the refund fields live under 'data'.
+        $refundData = $event->payload['data'];
 
         // Find the order
         $orderId = $refundData['metadata']['order_id'] ?? null;
@@ -406,6 +430,8 @@ class ProcessRefundSuccess
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Enum;
+use Laraditz\Xendit\Enums\RefundReason;
 use App\Models\Order;
 
 class CustomerRefundController extends Controller
@@ -428,7 +454,7 @@ class CustomerRefundController extends Controller
     public function store(Request $request, $orderId)
     {
         $request->validate([
-            'reason' => 'required|string|max:500',
+            'reason' => ['required', new Enum(RefundReason::class)],
             'items' => 'nullable|array',
             'items.*' => 'exists:order_items,id',
         ]);
@@ -499,41 +525,42 @@ class CustomerRefundController extends Controller
 
 ## Refund Status Values
 
-Xendit uses the following status values for refunds:
+Xendit uses the following status values for refunds (`RefundStatus` enum):
 
 | Status | Description |
 |--------|-------------|
 | `PENDING` | Refund is being processed |
 | `SUCCEEDED` | Refund completed successfully |
 | `FAILED` | Refund failed |
+| `CANCELLED` | Refund was cancelled |
 
 ## Refund Reasons
 
-Common refund reasons to use:
+`reason` is a required field and must be one of Xendit's fixed enum values (`RefundReason`) — free text is rejected by the API:
 
-- `Customer requested refund`
-- `Duplicate payment`
-- `Fraudulent transaction`
-- `Order cancelled`
-- `Item out of stock`
-- `Partial return`
-- `Wrong item shipped`
-- `Damaged item`
-- `Service not provided`
+| Reason | Description |
+|--------|-------------|
+| `FRAUDULENT` | Payment was fraudulent |
+| `DUPLICATE` | Duplicate payment |
+| `REQUESTED_BY_CUSTOMER` | Customer requested the refund |
+| `CANCELLATION` | Order/booking was cancelled |
+| `OTHERS` | Any other reason not covered above |
 
 ## Best Practices
 
 ### 1. Always Validate Payment Status
 
 ```php
+use Laraditz\Xendit\Enums\RefundReason;
+
 // ❌ Bad: Refund without checking payment status
 $refund = Xendit::refund()->create([
-    'payment_id' => $paymentId,
-    'reason' => 'Refund',
+    'payment_request_id' => $paymentRequestId,
+    'reason' => RefundReason::Others->value,
 ]);
 
 // ✅ Good: Verify payment is eligible for refund
-$payment = XenditPayment::where('xendit_id', $paymentId)->firstOrFail();
+$payment = XenditPayment::where('xendit_id', $paymentRequestId)->firstOrFail();
 
 if (!$payment->isPaid()) {
     throw new \Exception('Payment is not in paid status');
@@ -544,8 +571,8 @@ if ($payment->refunded_at) {
 }
 
 $refund = Xendit::refund()->create([
-    'payment_id' => $paymentId,
-    'reason' => 'Customer requested refund',
+    'payment_request_id' => $paymentRequestId,
+    'reason' => RefundReason::RequestedByCustomer->value,
 ]);
 ```
 
@@ -564,7 +591,9 @@ $order->refunds()->create([
 
 // Update when webhook received
 Event::listen(RefundSucceeded::class, function($event) {
-    Refund::where('xendit_refund_id', $event->payload['id'])
+    $refundData = $event->payload['data'];
+
+    Refund::where('xendit_refund_id', $refundData['id'])
         ->update([
             'status' => 'succeeded',
             'completed_at' => now(),
@@ -575,6 +604,8 @@ Event::listen(RefundSucceeded::class, function($event) {
 ### 3. Handle Partial Refunds Correctly
 
 ```php
+use Laraditz\Xendit\Enums\RefundReason;
+
 // Track total refunded amount
 $payment = XenditPayment::find($paymentId);
 $totalRefunded = $payment->refunds()->sum('amount');
@@ -586,9 +617,9 @@ if ($refundAmount > $remainingAmount) {
 
 // Create refund
 $refund = Xendit::refund()->create([
-    'payment_id' => $payment->xendit_id,
+    'payment_request_id' => $payment->xendit_id,
     'amount' => $refundAmount,
-    'reason' => 'Partial refund',
+    'reason' => RefundReason::RequestedByCustomer->value,
 ]);
 
 // Check if fully refunded
@@ -612,12 +643,13 @@ Mail::to($order->customer_email)->send(
 
 // Send success notification when webhook received
 Event::listen(RefundSucceeded::class, function($event) {
-    $order = Order::where('refund_id', $event->payload['id'])->first();
+    $refundData = $event->payload['data'];
+    $order = Order::where('refund_id', $refundData['id'])->first();
 
     Mail::to($order->customer_email)->send(
         new RefundCompletedMail($order, [
-            'refund_id' => $event->payload['id'],
-            'amount' => $event->payload['amount'],
+            'refund_id' => $refundData['id'],
+            'amount' => $refundData['amount'],
             'refunded_at' => now(),
         ])
     );
@@ -630,22 +662,23 @@ Event::listen(RefundSucceeded::class, function($event) {
 use Illuminate\Support\Facades\Log;
 
 try {
+    // $reason must already be a valid RefundReason value (e.g. RefundReason::from($input)->value)
     $refund = Xendit::refund()->create([
-        'payment_id' => $paymentId,
+        'payment_request_id' => $paymentRequestId,
         'amount' => $amount,
         'reason' => $reason,
     ]);
 
     Log::info('Refund created successfully', [
         'refund_id' => $refund['id'],
-        'payment_id' => $paymentId,
+        'payment_request_id' => $paymentRequestId,
         'amount' => $amount,
         'initiated_by' => auth()->id(),
     ]);
 
 } catch (\Exception $e) {
     Log::error('Refund creation failed', [
-        'payment_id' => $paymentId,
+        'payment_request_id' => $paymentRequestId,
         'amount' => $amount,
         'error' => $e->getMessage(),
         'attempted_by' => auth()->id(),
@@ -691,11 +724,13 @@ class RefundPolicy
 
 ### Error: "Payment not found"
 ```php
-// Solution: Verify payment ID is correct
-$payment = XenditPayment::where('xendit_id', $paymentId)->firstOrFail();
+use Laraditz\Xendit\Enums\RefundReason;
+
+// Solution: Verify the Payment Request ID is correct
+$payment = XenditPayment::where('xendit_id', $paymentRequestId)->firstOrFail();
 $refund = Xendit::refund()->create([
-    'payment_id' => $payment->xendit_id, // Use correct Xendit payment ID
-    'reason' => 'Refund',
+    'payment_request_id' => $payment->xendit_id, // Use correct Xendit Payment Request ID
+    'reason' => RefundReason::Others->value,
 ]);
 ```
 

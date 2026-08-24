@@ -26,7 +26,7 @@ class XenditSession extends Model
         'customer_id', 'customer',
         'payment_link_url', 'components_sdk_key',
         'success_return_url', 'cancel_return_url',
-        'payment_id', 'payment_token_id',
+        'payment_id', 'payment_token_id', 'payment_request_id',
         'metadata', 'session_details',
         'for_user_id', 'split_rule_id',
         'expires_at', 'completed_at', 'canceled_at',
@@ -116,5 +116,41 @@ class XenditSession extends Model
     public function scopeSplitRuleId($query, string $ruleId)
     {
         return $query->where('split_rule_id', $ruleId);
+    }
+
+    /**
+     * Create or update a local session record from a Xendit Session API/webhook response.
+     */
+    public static function syncFromApiResponse(array $data): ?self
+    {
+        $referenceId = data_get($data, 'reference_id');
+
+        if (!$referenceId) {
+            return null;
+        }
+
+        $session = static::matchingReferenceId($referenceId)->first();
+
+        if (!$session) {
+            return null;
+        }
+
+        $status = data_get($data, 'status');
+
+        $session->fill([
+            'status' => $status ? SessionStatus::fromXenditStatus($status) : $session->status,
+            'payment_id' => data_get($data, 'payment_id'),
+            'payment_token_id' => data_get($data, 'payment_token_id'),
+            'payment_request_id' => data_get($data, 'payment_request_id'),
+            'session_details' => $data,
+        ]);
+
+        if ($session->status === SessionStatus::Completed) {
+            $session->completed_at = now();
+        }
+
+        $session->save();
+
+        return $session;
     }
 }

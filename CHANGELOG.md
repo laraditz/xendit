@@ -4,6 +4,38 @@ All notable changes to `xendit` will be documented in this file
 
 ## Unreleased
 
+## 1.2.0 - 2026-08-25
+
+### Breaking
+
+- Removed `RefundCreated` event and the `refund.created` webhook route case — Xendit's webhook `event` enum never actually contains `refund.created` (only `refund.succeeded`/`refund.failed` are real), so this was dead code that never fired in production
+
+### Added
+
+- `RefundFailed` event, dispatched on the (previously unhandled) `refund.failed` webhook
+- `RefundReason`, `RefundStatus`, `RefundFailureCode` enums mirroring Xendit's real refund API values
+- `xendit_refunds` table and `XenditRefund` model — `refund.succeeded`/`refund.failed` webhooks now auto-sync a local row via `XenditRefund::syncFromApiResponse()`, resolving `payment_id` by matching the payload's `payment_request_id` against `xendit_payments.xendit_id`
+- `XenditPayment::refunds(): HasMany`
+- `xendit_sessions.payment_request_id` column — previously missing entirely, despite `payment_id`/`payment_token_id` already existing
+- `XenditSession::syncFromApiResponse()` — syncs `status`, `payment_id`, `payment_token_id`, `payment_request_id`, and `session_details` from a Xendit Session API/webhook response, matched by `reference_id`
+- `SessionStatus::fromXenditStatus()` — maps Xendit's raw string status values (`ACTIVE`, `COMPLETED`, ...) to the int-backed `SessionStatus` enum
+- `SyncSessionFromApiResponse` listener — `Xendit::session()->get()` now automatically syncs the local `xendit_sessions` row from the response, mirroring the existing transaction-sync pattern
+- `XenditApiLog` model (`xendit_api_logs` table) and `LogsApiCalls` trait — every outbound `XenditClient` call is now recorded (method, endpoint, request/response payload, HTTP status, duration) whether it succeeds, fails with a non-2xx response, or fails to connect at all
+- `xendit.log_api_calls` / `xendit.api_log_retention_days` config keys — `XenditApiLog` uses `Prunable` for retention via `php artisan model:prune`, no custom command needed
+- `docs/logging.md`
+
+### Changed
+
+- `XenditClient`'s five verb methods (`get`/`post`/`put`/`patch`/`delete`) now internally call a single `request()` dispatcher wrapped in `try/finally` so API call logging can capture failures — public method signatures are unchanged, and the existing `XenditApiRequesting`/`XenditApiResponseReceived` events keep firing at exactly the same points as before
+
+### Fixed
+
+- `docs/refund.md` documented `payment_id` as the refund create param and free-text `reason` values; Xendit's real API requires `payment_request_id` and constrains `reason` to a fixed enum (`FRAUDULENT`, `DUPLICATE`, `REQUESTED_BY_CUSTOMER`, `CANCELLATION`, `OTHERS`) — corrected across `docs/refund.md`, `docs/webhooks.md`, and `README.md`, including response field names (`created`/`updated`, not `created_at`/`updated_at`) and webhook payload access (`$event->payload['data']`, not `$event->payload` flat)
+- `WebhookHandler::handleSessionCompleted()` previously only flipped the session's status — `payment_id`/`payment_token_id`/`payment_request_id` were never actually populated from the webhook payload, even though two of those columns already existed. They're now synced via `XenditSession::syncFromApiResponse()`
+- GitHub Actions CI (`main.yml`) started failing on the `prefer-lowest` matrix leg because a newer Composer version defaults `config.policy.advisories.block` to `true`, which blocks installing any package version flagged by a security advisory — incompatible with that leg's intentional installation of old Laravel 11.x versions for backward-compatibility testing. Added `config.policy.advisories.block: false` to `composer.json` (scoped to this repo's own dev/CI tooling only; not read by consumers who require this package)
+
+---
+
 ## 1.1.0 - 2026-07-20
 
 ### Breaking

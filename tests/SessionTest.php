@@ -213,6 +213,27 @@ class SessionTest extends TestCase
         ]);
     }
 
+    public function test_create_maps_payment_request_id_from_response(): void
+    {
+        Http::fake([
+            'api.xendit.co/sessions' => Http::response([
+                'payment_session_id' => 'ps-pri',
+                'payment_link_url'   => 'https://checkout.xendit.co/sessions/ps-pri',
+                'expires_at'         => '2026-05-12T11:00:00Z',
+                'payment_request_id' => 'pr-created-1',
+            ], 201),
+        ]);
+
+        $session = \Laraditz\Xendit\Facades\Xendit::session()
+            ->referenceId('order-pri')
+            ->amount(100.00)
+            ->sessionType('PAY')
+            ->mode('PAYMENT_LINK')
+            ->create();
+
+        $this->assertEquals('pr-created-1', $session->payment_request_id);
+    }
+
     public function test_create_auto_generates_reference_id_when_not_set(): void
     {
         Http::fake([
@@ -374,6 +395,36 @@ class SessionTest extends TestCase
         $this->assertEquals('ps-abc123', $result['payment_session_id']);
     }
 
+    public function test_get_syncs_local_session_from_response(): void
+    {
+        $session = \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id'       => 'order-get-sync',
+            'payment_session_id' => 'ps-getsync',
+            'amount'             => 100.00,
+            'session_type'       => 'PAY',
+            'mode'               => 'PAYMENT_LINK',
+        ]);
+
+        Http::fake([
+            'api.xendit.co/sessions/ps-getsync' => Http::response([
+                'payment_session_id' => 'ps-getsync',
+                'reference_id'       => 'order-get-sync',
+                'status'             => 'COMPLETED',
+                'payment_id'         => 'py-getsync',
+                'payment_token_id'   => 'pt-getsync',
+                'payment_request_id' => 'pr-getsync',
+            ], 200),
+        ]);
+
+        \Laraditz\Xendit\Facades\Xendit::session()->get('ps-getsync');
+
+        $fresh = $session->fresh();
+        $this->assertEquals(\Laraditz\Xendit\Enums\SessionStatus::Completed, $fresh->status);
+        $this->assertEquals('py-getsync', $fresh->payment_id);
+        $this->assertEquals('pt-getsync', $fresh->payment_token_id);
+        $this->assertEquals('pr-getsync', $fresh->payment_request_id);
+    }
+
     public function test_webhook_handler_marks_session_completed(): void
     {
         Event::fake();
@@ -403,6 +454,63 @@ class SessionTest extends TestCase
             $session->fresh()->status
         );
         Event::assertDispatched(\Laraditz\Xendit\Events\SessionCompleted::class);
+    }
+
+    public function test_webhook_handler_syncs_payment_identifiers_on_session_completed(): void
+    {
+        Event::fake();
+
+        $session = \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id'       => 'order-webhook-ids',
+            'payment_session_id' => 'ps-ids1',
+            'amount'             => 100.00,
+            'session_type'       => 'PAY',
+            'mode'               => 'PAYMENT_LINK',
+        ]);
+
+        $handler = app(\Laraditz\Xendit\Support\WebhookHandler::class);
+        $handler->handle([
+            'event'       => 'payment_session.completed',
+            'business_id' => 'biz-123',
+            'created'     => now()->toIso8601String(),
+            'data'        => [
+                'payment_session_id' => 'ps-ids1',
+                'reference_id'       => 'order-webhook-ids',
+                'status'             => 'COMPLETED',
+                'payment_id'         => 'py-ids1',
+                'payment_token_id'   => 'pt-ids1',
+                'payment_request_id' => 'pr-ids1',
+            ],
+        ]);
+
+        $fresh = $session->fresh();
+        $this->assertEquals(\Laraditz\Xendit\Enums\SessionStatus::Completed, $fresh->status);
+        $this->assertEquals('py-ids1', $fresh->payment_id);
+        $this->assertEquals('pt-ids1', $fresh->payment_token_id);
+        $this->assertEquals('pr-ids1', $fresh->payment_request_id);
+
+        Event::assertDispatched(\Laraditz\Xendit\Events\SessionCompleted::class, function ($event) use ($fresh) {
+            return $event->session->is($fresh);
+        });
+    }
+
+    public function test_webhook_handler_does_not_dispatch_completed_when_no_local_session(): void
+    {
+        Event::fake();
+
+        $handler = app(\Laraditz\Xendit\Support\WebhookHandler::class);
+        $handler->handle([
+            'event'       => 'payment_session.completed',
+            'business_id' => 'biz-123',
+            'created'     => now()->toIso8601String(),
+            'data'        => [
+                'payment_session_id' => 'ps-unknown',
+                'reference_id'       => 'order-unknown',
+                'status'             => 'COMPLETED',
+            ],
+        ]);
+
+        Event::assertNotDispatched(\Laraditz\Xendit\Events\SessionCompleted::class);
     }
 
     public function test_webhook_handler_marks_session_expired(): void
@@ -514,6 +622,22 @@ class SessionTest extends TestCase
         $columns = \Illuminate\Support\Facades\Schema::getColumnListing('xendit_sessions');
         $this->assertContains('for_user_id', $columns);
         $this->assertContains('split_rule_id', $columns);
+    }
+
+    public function test_xendit_session_has_payment_request_id_column(): void
+    {
+        $columns = \Illuminate\Support\Facades\Schema::getColumnListing('xendit_sessions');
+        $this->assertContains('payment_request_id', $columns);
+    }
+
+    public function test_payment_request_id_is_mass_assignable(): void
+    {
+        $session = \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id'        => 'ref-pri-1',
+            'payment_request_id'  => 'pr-abc123',
+        ]);
+
+        $this->assertEquals('pr-abc123', $session->fresh()->payment_request_id);
     }
 
     public function test_xendit_session_scope_for_user_id(): void

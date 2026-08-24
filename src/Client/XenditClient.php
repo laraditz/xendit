@@ -4,6 +4,7 @@ namespace Laraditz\Xendit\Client;
 
 use Laraditz\Xendit\Client\Concerns\HandlesAuthentication;
 use Laraditz\Xendit\Client\Concerns\HandlesErrors;
+use Laraditz\Xendit\Client\Concerns\LogsApiCalls;
 use Laraditz\Xendit\Client\Concerns\MakesHttpRequests;
 use Laraditz\Xendit\Client\Contracts\ClientInterface;
 use Laraditz\Xendit\Events\XenditApiRequesting;
@@ -13,70 +14,55 @@ class XenditClient implements ClientInterface
 {
     use HandlesAuthentication;
     use HandlesErrors;
+    use LogsApiCalls;
     use MakesHttpRequests;
 
     public function get(string $endpoint, array $query = [], array $headers = []): array
     {
-        event(new XenditApiRequesting('GET', $endpoint, $query, []));
-
-        $response = $this->buildClient()->withHeaders($headers)->get($endpoint, $query);
-
-        $result = $this->handleResponse($response);
-
-        event(new XenditApiResponseReceived('GET', $endpoint, $query, [], $result));
-
-        return $result;
+        return $this->request('GET', $endpoint, $query, [], $headers);
     }
 
     public function post(string $endpoint, array $data = [], array $headers = []): array
     {
-        event(new XenditApiRequesting('POST', $endpoint, [], $data));
-
-        $response = $this->buildClient()->withHeaders($headers)->post($endpoint, $data);
-
-        $result = $this->handleResponse($response);
-
-        event(new XenditApiResponseReceived('POST', $endpoint, [], $data, $result));
-
-        return $result;
+        return $this->request('POST', $endpoint, [], $data, $headers);
     }
 
     public function put(string $endpoint, array $data = [], array $headers = []): array
     {
-        event(new XenditApiRequesting('PUT', $endpoint, [], $data));
-
-        $response = $this->buildClient()->withHeaders($headers)->put($endpoint, $data);
-
-        $result = $this->handleResponse($response);
-
-        event(new XenditApiResponseReceived('PUT', $endpoint, [], $data, $result));
-
-        return $result;
+        return $this->request('PUT', $endpoint, [], $data, $headers);
     }
 
     public function patch(string $endpoint, array $data = [], array $headers = []): array
     {
-        event(new XenditApiRequesting('PATCH', $endpoint, [], $data));
-
-        $response = $this->buildClient()->withHeaders($headers)->patch($endpoint, $data);
-
-        $result = $this->handleResponse($response);
-
-        event(new XenditApiResponseReceived('PATCH', $endpoint, [], $data, $result));
-
-        return $result;
+        return $this->request('PATCH', $endpoint, [], $data, $headers);
     }
 
     public function delete(string $endpoint, array $headers = []): array
     {
-        event(new XenditApiRequesting('DELETE', $endpoint, [], []));
+        return $this->request('DELETE', $endpoint, [], [], $headers);
+    }
 
-        $response = $this->buildClient()->withHeaders($headers)->delete($endpoint);
+    protected function request(string $method, string $endpoint, array $query, array $payload, array $headers): array
+    {
+        $startedAt = microtime(true);
+        $response = null;
 
-        $result = $this->handleResponse($response);
+        event(new XenditApiRequesting($method, $endpoint, $query, $payload));
 
-        event(new XenditApiResponseReceived('DELETE', $endpoint, [], [], $result));
+        try {
+            $response = match ($method) {
+                'GET' => $this->buildClient()->withHeaders($headers)->get($endpoint, $query),
+                'DELETE' => $this->buildClient()->withHeaders($headers)->delete($endpoint),
+                default => $this->buildClient()->withHeaders($headers)->{strtolower($method)}($endpoint, $payload),
+            };
 
-        return $result;
+            $result = $this->handleResponse($response);
+
+            event(new XenditApiResponseReceived($method, $endpoint, $query, $payload, $result));
+
+            return $result;
+        } finally {
+            $this->logApiCall($method, $endpoint, $query, $payload, $response, $startedAt);
+        }
     }
 }

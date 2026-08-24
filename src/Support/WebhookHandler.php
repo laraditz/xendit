@@ -7,12 +7,13 @@ use Laraditz\Xendit\Events\PaymentFailed;
 use Laraditz\Xendit\Events\PaymentPaid;
 use Laraditz\Xendit\Events\PaymentTokenActivated;
 use Laraditz\Xendit\Events\PaymentTokenCreated;
-use Laraditz\Xendit\Events\RefundCreated;
+use Laraditz\Xendit\Events\RefundFailed;
 use Laraditz\Xendit\Events\RefundSucceeded;
 use Laraditz\Xendit\Events\SessionCompleted;
 use Laraditz\Xendit\Events\SessionExpired;
 use Laraditz\Xendit\Events\WebhookReceived;
 use Laraditz\Xendit\Models\XenditPayment;
+use Laraditz\Xendit\Models\XenditRefund;
 use Laraditz\Xendit\Models\XenditSession;
 use Laraditz\Xendit\Models\XenditWebhookLog;
 
@@ -77,8 +78,8 @@ class WebhookHandler
             str_contains($eventType, 'payment_token.activated') => $this->handlePaymentTokenActivated($payload),
 
             // Refund webhooks
-            str_contains($eventType, 'refund.created') => $this->handleRefundCreated($payload),
             str_contains($eventType, 'refund.succeeded') => $this->handleRefundSucceeded($payload),
+            str_contains($eventType, 'refund.failed') => $this->handleRefundFailed($payload),
 
             // Session webhooks
             str_contains($eventType, 'payment_session.completed') => $this->handleSessionCompleted($payload),
@@ -254,27 +255,30 @@ class WebhookHandler
     }
 
     /**
-     * Handle refund created webhook
-     */
-    protected function handleRefundCreated(array $payload): void
-    {
-        event(new RefundCreated($payload));
-    }
-
-    /**
      * Handle refund succeeded webhook
      */
     protected function handleRefundSucceeded(array $payload): void
     {
+        XenditRefund::syncFromApiResponse(data_get($payload, 'data', []));
+
         event(new RefundSucceeded($payload));
+    }
+
+    /**
+     * Handle refund failed webhook
+     */
+    protected function handleRefundFailed(array $payload): void
+    {
+        XenditRefund::syncFromApiResponse(data_get($payload, 'data', []));
+
+        event(new RefundFailed($payload));
     }
 
     protected function handleSessionCompleted(array $payload): void
     {
-        $session = XenditSession::matchingReferenceId(data_get($payload, 'data.reference_id'))->first();
+        $session = XenditSession::syncFromApiResponse(data_get($payload, 'data', []));
 
         if ($session) {
-            $session->markAsCompleted();
             event(new SessionCompleted($session));
         }
     }

@@ -173,6 +173,7 @@ class SessionBuilder extends BaseBuilder
             'components_sdk_key' => $response['components_sdk_key'] ?? null,
             'payment_id'         => $response['payment_id'] ?? null,
             'payment_token_id'   => $response['payment_token_id'] ?? null,
+            'payment_request_id' => $response['payment_request_id'] ?? null,
             'expires_at'         => isset($response['expires_at'])
                 ? Carbon::parse($response['expires_at'])
                 : null,
