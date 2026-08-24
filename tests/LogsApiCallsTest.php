@@ -2,6 +2,7 @@
 
 namespace Laraditz\Xendit\Tests;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Laraditz\Xendit\Client\XenditClient;
 use Laraditz\Xendit\Models\XenditApiLog;
@@ -124,5 +125,26 @@ class LogsApiCallsTest extends TestCase
         $this->assertSame(400, $log->http_status);
         $this->assertSame(['message' => 'invalid amount'], $log->response_payload);
         $this->assertSame(['amount' => -1], $log->request_payload);
+    }
+
+    public function test_connection_failure_logs_with_null_response(): void
+    {
+        Http::fake(['*' => function () {
+            throw new ConnectionException('Could not connect to host.');
+        }]);
+
+        try {
+            app(XenditClient::class)->post('/refunds', ['amount' => 50000]);
+            $this->fail('Expected a ConnectionException to be thrown.');
+        } catch (ConnectionException $e) {
+            // expected
+        }
+
+        $log = XenditApiLog::first();
+
+        $this->assertNotNull($log);
+        $this->assertNull($log->http_status);
+        $this->assertNull($log->response_payload);
+        $this->assertSame(['amount' => 50000], $log->request_payload);
     }
 }
