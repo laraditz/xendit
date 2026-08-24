@@ -395,6 +395,36 @@ class SessionTest extends TestCase
         $this->assertEquals('ps-abc123', $result['payment_session_id']);
     }
 
+    public function test_get_syncs_local_session_from_response(): void
+    {
+        $session = \Laraditz\Xendit\Models\XenditSession::create([
+            'reference_id'       => 'order-get-sync',
+            'payment_session_id' => 'ps-getsync',
+            'amount'             => 100.00,
+            'session_type'       => 'PAY',
+            'mode'               => 'PAYMENT_LINK',
+        ]);
+
+        Http::fake([
+            'api.xendit.co/sessions/ps-getsync' => Http::response([
+                'payment_session_id' => 'ps-getsync',
+                'reference_id'       => 'order-get-sync',
+                'status'             => 'COMPLETED',
+                'payment_id'         => 'py-getsync',
+                'payment_token_id'   => 'pt-getsync',
+                'payment_request_id' => 'pr-getsync',
+            ], 200),
+        ]);
+
+        \Laraditz\Xendit\Facades\Xendit::session()->get('ps-getsync');
+
+        $fresh = $session->fresh();
+        $this->assertEquals(\Laraditz\Xendit\Enums\SessionStatus::Completed, $fresh->status);
+        $this->assertEquals('py-getsync', $fresh->payment_id);
+        $this->assertEquals('pt-getsync', $fresh->payment_token_id);
+        $this->assertEquals('pr-getsync', $fresh->payment_request_id);
+    }
+
     public function test_webhook_handler_marks_session_completed(): void
     {
         Event::fake();
