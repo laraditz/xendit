@@ -25,9 +25,12 @@ class RefundWebhookTest extends TestCase
         $this->assertContains(SerializesModels::class, $traits);
     }
 
-    public function test_refund_created_dead_code_is_removed(): void
+    public function test_refund_created_webhook_route_stays_removed(): void
     {
-        $this->assertFalse(class_exists('Laraditz\\Xendit\\Events\\RefundCreated'));
+        // RefundCreated (as of 2026-08-25) is dispatched directly from
+        // RefundService::create() — it is not, and must never become, a
+        // webhook route. Xendit's webhook `event` enum never contains
+        // `refund.created`; only the routing/handler method is under test here.
         $this->assertFalse(method_exists(WebhookHandler::class, 'handleRefundCreated'));
     }
 
