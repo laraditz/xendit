@@ -4,6 +4,8 @@ namespace Laraditz\Xendit\Services;
 
 use Laraditz\Xendit\Client\Concerns\HasApiVersion;
 use Laraditz\Xendit\Client\XenditClient;
+use Laraditz\Xendit\Events\RefundCreated;
+use Laraditz\Xendit\Models\XenditRefund;
 
 class RefundService
 {
@@ -17,8 +19,14 @@ class RefundService
         $this->apiVersionKey = 'refund';
     }
 
-    public function create(array $data, array $headers = []): array
+    public function create(array $data, array $headers = []): XenditRefund
     {
-        return $this->client->post('/refunds', $data, $this->resolveHeaders($headers));
+        $response = $this->client->post('/refunds', $data, $this->resolveHeaders($headers));
+
+        $refund = XenditRefund::syncFromApiResponse($response);
+
+        event(new RefundCreated($refund));
+
+        return $refund;
     }
 }

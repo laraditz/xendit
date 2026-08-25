@@ -296,12 +296,15 @@ Xendit::session()->cancel($session->payment_session_id);
 use Laraditz\Xendit\Enums\RefundReason;
 use Laraditz\Xendit\Facades\Xendit;
 
-// Create a refund
+// Create a refund — persists a local XenditRefund record immediately
 $refund = Xendit::refund()->create([
     'payment_request_id' => $paymentRequestId,
     'amount' => 50000,
     'reason' => RefundReason::RequestedByCustomer->value,
 ]);
+
+$refund->refund_id; // Xendit's refund ID
+$refund->status;    // RefundStatus::Pending
 ```
 
 ### Creating Payment Links
@@ -453,6 +456,7 @@ use Laraditz\Xendit\Events\PaymentExpired;
 use Laraditz\Xendit\Events\PaymentFailed;
 use Laraditz\Xendit\Events\PaymentTokenCreated;
 use Laraditz\Xendit\Events\PaymentTokenActivated;
+use Laraditz\Xendit\Events\RefundCreated;
 use Laraditz\Xendit\Events\RefundSucceeded;
 use Laraditz\Xendit\Events\RefundFailed;
 use Laraditz\Xendit\Events\SessionCreated;
@@ -482,6 +486,9 @@ protected $listen = [
     ],
 
     // Refund events
+    RefundCreated::class => [
+        LogRefundCreated::class,
+    ],
     RefundSucceeded::class => [
         ProcessRefund::class,
     ],

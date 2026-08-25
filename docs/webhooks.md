@@ -55,8 +55,11 @@ The package dispatches Laravel events for all webhook notifications:
 
 | Event | Description | Triggered When |
 |-------|-------------|----------------|
+| `RefundCreated` | Refund created in your system | After `Xendit::refund()->create()` succeeds |
 | `RefundSucceeded` | Refund completed | Webhook `refund.succeeded` received |
 | `RefundFailed` | Refund failed | Webhook `refund.failed` received |
+
+All refund events expose `$event->refund` — a `XenditRefund` model instance — except `RefundSucceeded`/`RefundFailed`, which expose the full webhook envelope as `$event->payload`.
 
 ### Session Events
 
@@ -92,6 +95,7 @@ use Laraditz\Xendit\Events\PaymentExpired;
 use Laraditz\Xendit\Events\PaymentFailed;
 use Laraditz\Xendit\Events\PaymentTokenCreated;
 use Laraditz\Xendit\Events\PaymentTokenActivated;
+use Laraditz\Xendit\Events\RefundCreated;
 use Laraditz\Xendit\Events\RefundSucceeded;
 use Laraditz\Xendit\Events\RefundFailed;
 use Laraditz\Xendit\Events\SessionCreated;
@@ -116,6 +120,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         PaymentFailed::class => [
             NotifyPaymentFailure::class,
+        ],
+        RefundCreated::class => [
+            LogRefundCreated::class,
         ],
         RefundSucceeded::class => [
             ProcessRefund::class,
@@ -463,6 +470,16 @@ $event->payment; // XenditPayment model instance
 
 ```php
 $event->payment; // XenditPayment model instance
+```
+
+### RefundCreated Event
+
+```php
+$event->refund; // XenditRefund model instance
+
+$event->refund->refund_id;   // Xendit's refund ID
+$event->refund->status;      // RefundStatus::Pending (typically, right after creation)
+$event->refund->payment;     // XenditPayment relation, if resolved
 ```
 
 ### RefundSucceeded Event
