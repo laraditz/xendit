@@ -2,6 +2,7 @@
 
 namespace Laraditz\Xendit\Tests;
 
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Laraditz\Xendit\Enums\RefundReason;
 use Laraditz\Xendit\Enums\RefundStatus;
@@ -83,5 +84,21 @@ class RefundServiceTest extends TestCase
         ]);
 
         $this->assertNull($refund->payment_id);
+    }
+
+    public function test_create_dispatches_refund_created(): void
+    {
+        Event::fake([RefundCreated::class]);
+
+        Http::fake(['*' => Http::response($this->sampleResponse(), 200)]);
+
+        $refund = app(RefundService::class)->create([
+            'payment_request_id' => 'pr-create-1',
+            'reason' => RefundReason::RequestedByCustomer->value,
+        ]);
+
+        Event::assertDispatched(RefundCreated::class, function ($event) use ($refund) {
+            return $event->refund->is($refund);
+        });
     }
 }
