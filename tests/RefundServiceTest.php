@@ -121,4 +121,28 @@ class RefundServiceTest extends TestCase
         $this->assertSame(0, XenditRefund::count());
         Event::assertNotDispatched(RefundCreated::class);
     }
+
+    public function test_webhook_after_create_updates_same_row_not_a_duplicate(): void
+    {
+        Http::fake(['*' => Http::response($this->sampleResponse(), 200)]);
+
+        $refund = app(RefundService::class)->create([
+            'payment_request_id' => 'pr-create-1',
+            'reason' => RefundReason::RequestedByCustomer->value,
+        ]);
+
+        $this->assertSame(1, XenditRefund::count());
+        $this->assertSame(RefundStatus::Pending, $refund->status);
+
+        $handler = app(\Laraditz\Xendit\Support\WebhookHandler::class);
+        $handler->handle([
+            'event' => 'refund.succeeded',
+            'business_id' => 'biz-1',
+            'created' => now()->toIso8601String(),
+            'data' => $this->sampleResponse(['status' => 'SUCCEEDED']),
+        ]);
+
+        $this->assertSame(1, XenditRefund::count());
+        $this->assertSame(RefundStatus::Succeeded, $refund->fresh()->status);
+    }
 }
