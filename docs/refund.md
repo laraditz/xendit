@@ -530,6 +530,14 @@ class CustomerRefundController extends Controller
 }
 ```
 
+## Events
+
+| Event | Dispatched When |
+|-------|----------------|
+| `RefundCreated` | After `create()` succeeds |
+| `RefundSucceeded` | Webhook `refund.succeeded` received |
+| `RefundFailed` | Webhook `refund.failed` received |
+
 ## Refund Status Values
 
 Xendit uses the following status values for refunds (`RefundStatus` enum):
