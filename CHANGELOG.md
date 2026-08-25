@@ -4,6 +4,22 @@ All notable changes to `xendit` will be documented in this file
 
 ## Unreleased
 
+## 1.2.1 - 2026-08-25
+
+### Breaking
+
+- `RefundService::create()` return type changes from `array` to `XenditRefund` — callers using the old array shape (e.g. `$refund['id']`) must migrate to model property access (`$refund->refund_id`; note `$refund->id` is the *local* database row's own primary key, not Xendit's refund ID)
+
+### Added
+
+- `RefundCreated` event, dispatched after `create()` successfully persists a refund locally — mirrors the `*Created` event every other resource's `create()` already dispatches (`SessionCreated`, `CustomerCreated`). Distinct from the `RefundCreated` removed in 1.2.0: that one fired on a webhook event Xendit never sends; this one fires on real local creation
+
+### Fixed
+
+- `Xendit::refund()->create()` succeeded against Xendit's API but never persisted a local `XenditRefund` record — only the `refund.succeeded`/`refund.failed` webhook did, via `XenditRefund::syncFromApiResponse()`. If the webhook wasn't configured or never reached the app, no local record ever appeared despite the refund succeeding on Xendit's side. `create()` now calls `syncFromApiResponse()` itself immediately on a successful response, matching how `PaymentRequestBuilder`/`SessionBuilder` already persist locally at creation time. Webhook-driven sync is unchanged and remains idempotent against the row `create()` already wrote (updates in place, no duplicate)
+
+---
+
 ## 1.2.0 - 2026-08-25
 
 ### Breaking
