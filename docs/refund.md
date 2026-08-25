@@ -6,9 +6,9 @@ The Refund API allows you to refund payments that have been successfully complet
 
 ## Available Methods
 
-### `create(array $data): array`
+### `create(array $data): XenditRefund`
 
-Create a refund for a completed payment.
+Create a refund for a completed payment. Persists a local `XenditRefund` record immediately from the API response — it does not wait for the `refund.succeeded`/`refund.failed` webhook to appear.
 
 **Official API:** `POST /refunds`
 
@@ -48,7 +48,7 @@ $refund = Xendit::refund()->create([
     ],
 ]);
 
-// Response structure
+// $refund is a XenditRefund model, mapped from this raw Xendit response shape:
 [
     'id' => 'rfd-12345678',
     'payment_request_id' => 'pr-12345678',
@@ -67,6 +67,13 @@ $refund = Xendit::refund()->create([
     'created' => '2024-01-15T10:00:00Z',
     'updated' => '2024-01-15T10:00:00Z',
 ]
+
+// Access via model property, not array key:
+$refund->refund_id;   // 'rfd-12345678' — Xendit's refund ID
+$refund->id;          // the LOCAL database row's own primary key — NOT the same value
+$refund->status;      // RefundStatus::Pending
+$refund->reason;      // RefundReason::RequestedByCustomer
+$refund->amount;      // 50000
 ```
 
 ## Usage Examples
