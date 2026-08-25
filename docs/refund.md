@@ -590,8 +590,8 @@ $refund = Xendit::refund()->create([
 $order->refunds()->create([
     'xendit_refund_id' => $refund->refund_id,
     'payment_id' => $payment->id,
-    'amount' => $refund['amount'],
-    'reason' => $refund['reason'],
+    'amount' => $refund->amount,
+    'reason' => $refund->reason->value, // RefundReason enum -> plain string column
     'status' => 'pending',
     'initiated_by' => auth()->id(),
 ]);
@@ -642,8 +642,8 @@ if (($totalRefunded + $refundAmount) >= $payment->amount) {
 Mail::to($order->customer_email)->send(
     new RefundInitiatedMail($order, [
         'refund_id' => $refund->refund_id,
-        'amount' => $refund['amount'],
-        'reason' => $refund['reason'],
+        'amount' => $refund->amount,
+        'reason' => $refund->reason->value, // RefundReason enum -> plain string for the mail template
         'estimated_days' => '5-10 business days',
     ])
 );
