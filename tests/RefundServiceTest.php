@@ -101,4 +101,24 @@ class RefundServiceTest extends TestCase
             return $event->refund->is($refund);
         });
     }
+
+    public function test_non_2xx_response_creates_no_row_and_dispatches_nothing(): void
+    {
+        Event::fake([RefundCreated::class]);
+
+        Http::fake(['*' => Http::response(['message' => 'invalid amount'], 400)]);
+
+        try {
+            app(RefundService::class)->create([
+                'payment_request_id' => 'pr-create-1',
+                'reason' => RefundReason::RequestedByCustomer->value,
+            ]);
+            $this->fail('Expected an exception to be thrown.');
+        } catch (\Laraditz\Xendit\Exceptions\ValidationException $e) {
+            // expected
+        }
+
+        $this->assertSame(0, XenditRefund::count());
+        Event::assertNotDispatched(RefundCreated::class);
+    }
 }
