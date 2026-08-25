@@ -118,21 +118,21 @@ public function refundOrder(Request $request, $orderId)
     // Update order status
     $order->update([
         'status' => 'refund_pending',
-        'refund_id' => $refund['id'],
+        'refund_id' => $refund->refund_id,
         'refund_requested_at' => now(),
     ]);
 
     // Log the refund request
     Log::info('Refund requested', [
         'order_id' => $order->id,
-        'refund_id' => $refund['id'],
+        'refund_id' => $refund->refund_id,
         'amount' => $payment->amount,
     ]);
 
     return response()->json([
         'success' => true,
         'message' => 'Refund request submitted successfully',
-        'refund_id' => $refund['id'],
+        'refund_id' => $refund->refund_id,
     ]);
 }
 ```
@@ -187,7 +187,7 @@ public function processReturn(Request $request, $orderId)
 
     // Create return record
     $order->returns()->create([
-        'refund_id' => $refund['id'],
+        'refund_id' => $refund->refund_id,
         'amount' => $refundAmount,
         'status' => 'pending',
         'items' => $returnedItemDetails,
@@ -240,7 +240,7 @@ class CancelOrderListener
             ]);
 
             $order->update([
-                'refund_id' => $refund['id'],
+                'refund_id' => $refund->refund_id,
                 'refund_status' => 'pending',
             ]);
 
@@ -251,7 +251,7 @@ class CancelOrderListener
 
             Log::info('Auto-refund initiated for cancelled order', [
                 'order_id' => $order->id,
-                'refund_id' => $refund['id'],
+                'refund_id' => $refund->refund_id,
             ]);
 
         } catch (\Exception $e) {
@@ -314,7 +314,7 @@ class RefundController extends Controller
         // Update refund request
         $refundRequest->update([
             'status' => 'approved',
-            'xendit_refund_id' => $refund['id'],
+            'xendit_refund_id' => $refund->refund_id,
             'approved_by' => auth()->id(),
             'approved_at' => now(),
         ]);
@@ -588,7 +588,7 @@ $refund = Xendit::refund()->create([
 ```php
 // Create local refund record
 $order->refunds()->create([
-    'xendit_refund_id' => $refund['id'],
+    'xendit_refund_id' => $refund->refund_id,
     'payment_id' => $payment->id,
     'amount' => $refund['amount'],
     'reason' => $refund['reason'],
@@ -641,7 +641,7 @@ if (($totalRefunded + $refundAmount) >= $payment->amount) {
 // Send refund confirmation email
 Mail::to($order->customer_email)->send(
     new RefundInitiatedMail($order, [
-        'refund_id' => $refund['id'],
+        'refund_id' => $refund->refund_id,
         'amount' => $refund['amount'],
         'reason' => $refund['reason'],
         'estimated_days' => '5-10 business days',
@@ -677,7 +677,7 @@ try {
     ]);
 
     Log::info('Refund created successfully', [
-        'refund_id' => $refund['id'],
+        'refund_id' => $refund->refund_id,
         'payment_request_id' => $paymentRequestId,
         'amount' => $amount,
         'initiated_by' => auth()->id(),
