@@ -6,9 +6,9 @@ The Refund API allows you to refund payments that have been successfully complet
 
 ## Available Methods
 
-### `create(array $data): array`
+### `create(array $data): XenditRefund`
 
-Create a refund for a completed payment.
+Create a refund for a completed payment. Persists a local `XenditRefund` record immediately from the API response — it does not wait for the `refund.succeeded`/`refund.failed` webhook to appear.
 
 **Official API:** `POST /refunds`
 
@@ -48,7 +48,7 @@ $refund = Xendit::refund()->create([
     ],
 ]);
 
-// Response structure
+// $refund is a XenditRefund model, mapped from this raw Xendit response shape:
 [
     'id' => 'rfd-12345678',
     'payment_request_id' => 'pr-12345678',
@@ -67,6 +67,13 @@ $refund = Xendit::refund()->create([
     'created' => '2024-01-15T10:00:00Z',
     'updated' => '2024-01-15T10:00:00Z',
 ]
+
+// Access via model property, not array key:
+$refund->refund_id;   // 'rfd-12345678' — Xendit's refund ID
+$refund->id;          // the LOCAL database row's own primary key — NOT the same value
+$refund->status;      // RefundStatus::Pending
+$refund->reason;      // RefundReason::RequestedByCustomer
+$refund->amount;      // 50000
 ```
 
 ## Usage Examples
@@ -111,21 +118,21 @@ public function refundOrder(Request $request, $orderId)
     // Update order status
     $order->update([
         'status' => 'refund_pending',
-        'refund_id' => $refund['id'],
+        'refund_id' => $refund->refund_id,
         'refund_requested_at' => now(),
     ]);
 
     // Log the refund request
     Log::info('Refund requested', [
         'order_id' => $order->id,
-        'refund_id' => $refund['id'],
+        'refund_id' => $refund->refund_id,
         'amount' => $payment->amount,
     ]);
 
     return response()->json([
         'success' => true,
         'message' => 'Refund request submitted successfully',
-        'refund_id' => $refund['id'],
+        'refund_id' => $refund->refund_id,
     ]);
 }
 ```
@@ -180,7 +187,7 @@ public function processReturn(Request $request, $orderId)
 
     // Create return record
     $order->returns()->create([
-        'refund_id' => $refund['id'],
+        'refund_id' => $refund->refund_id,
         'amount' => $refundAmount,
         'status' => 'pending',
         'items' => $returnedItemDetails,
@@ -233,7 +240,7 @@ class CancelOrderListener
             ]);
 
             $order->update([
-                'refund_id' => $refund['id'],
+                'refund_id' => $refund->refund_id,
                 'refund_status' => 'pending',
             ]);
 
@@ -244,7 +251,7 @@ class CancelOrderListener
 
             Log::info('Auto-refund initiated for cancelled order', [
                 'order_id' => $order->id,
-                'refund_id' => $refund['id'],
+                'refund_id' => $refund->refund_id,
             ]);
 
         } catch (\Exception $e) {
@@ -307,7 +314,7 @@ class RefundController extends Controller
         // Update refund request
         $refundRequest->update([
             'status' => 'approved',
-            'xendit_refund_id' => $refund['id'],
+            'xendit_refund_id' => $refund->refund_id,
             'approved_by' => auth()->id(),
             'approved_at' => now(),
         ]);
@@ -523,6 +530,14 @@ class CustomerRefundController extends Controller
 }
 ```
 
+## Events
+
+| Event | Dispatched When |
+|-------|----------------|
+| `RefundCreated` | After `create()` succeeds |
+| `RefundSucceeded` | Webhook `refund.succeeded` received |
+| `RefundFailed` | Webhook `refund.failed` received |
+
 ## Refund Status Values
 
 Xendit uses the following status values for refunds (`RefundStatus` enum):
@@ -581,10 +596,10 @@ $refund = Xendit::refund()->create([
 ```php
 // Create local refund record
 $order->refunds()->create([
-    'xendit_refund_id' => $refund['id'],
+    'xendit_refund_id' => $refund->refund_id,
     'payment_id' => $payment->id,
-    'amount' => $refund['amount'],
-    'reason' => $refund['reason'],
+    'amount' => $refund->amount,
+    'reason' => $refund->reason->value, // RefundReason enum -> plain string column
     'status' => 'pending',
     'initiated_by' => auth()->id(),
 ]);
@@ -634,9 +649,9 @@ if (($totalRefunded + $refundAmount) >= $payment->amount) {
 // Send refund confirmation email
 Mail::to($order->customer_email)->send(
     new RefundInitiatedMail($order, [
-        'refund_id' => $refund['id'],
-        'amount' => $refund['amount'],
-        'reason' => $refund['reason'],
+        'refund_id' => $refund->refund_id,
+        'amount' => $refund->amount,
+        'reason' => $refund->reason->value, // RefundReason enum -> plain string for the mail template
         'estimated_days' => '5-10 business days',
     ])
 );
@@ -670,7 +685,7 @@ try {
     ]);
 
     Log::info('Refund created successfully', [
-        'refund_id' => $refund['id'],
+        'refund_id' => $refund->refund_id,
         'payment_request_id' => $paymentRequestId,
         'amount' => $amount,
         'initiated_by' => auth()->id(),
